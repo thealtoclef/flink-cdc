@@ -19,6 +19,7 @@ package org.apache.flink.cdc.connectors.postgres.source.config;
 
 import org.apache.flink.cdc.connectors.base.config.JdbcSourceConfig;
 import org.apache.flink.cdc.connectors.base.options.StartupOptions;
+import org.apache.flink.table.catalog.ObjectPath;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
@@ -27,6 +28,7 @@ import javax.annotation.Nullable;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 import static io.debezium.connector.postgresql.PostgresConnectorConfig.SLOT_NAME;
@@ -63,7 +65,7 @@ public class PostgresSourceConfig extends JdbcSourceConfig {
             Duration connectTimeout,
             int connectMaxRetries,
             int connectionPoolSize,
-            @Nullable String chunkKeyColumn,
+            @Nullable Map<ObjectPath, String> chunkKeyColumns,
             boolean skipSnapshotBackfill,
             boolean isScanNewlyAddedTableEnabled,
             int lsnCommitCheckpointsDelay,
@@ -91,7 +93,7 @@ public class PostgresSourceConfig extends JdbcSourceConfig {
                 connectTimeout,
                 connectMaxRetries,
                 connectionPoolSize,
-                chunkKeyColumn,
+                chunkKeyColumns,
                 skipSnapshotBackfill,
                 isScanNewlyAddedTableEnabled,
                 assignUnboundedChunkFirst);

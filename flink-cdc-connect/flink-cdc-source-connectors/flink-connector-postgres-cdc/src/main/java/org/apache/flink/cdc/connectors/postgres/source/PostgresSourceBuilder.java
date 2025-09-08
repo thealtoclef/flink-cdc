@@ -42,6 +42,7 @@ import org.apache.flink.cdc.connectors.postgres.source.reader.PostgresSourceRead
 import org.apache.flink.cdc.debezium.DebeziumDeserializationSchema;
 import org.apache.flink.connector.base.source.reader.RecordsWithSplitIds;
 import org.apache.flink.connector.base.source.reader.synchronization.FutureCompletingBlockingQueue;
+import org.apache.flink.table.catalog.ObjectPath;
 import org.apache.flink.util.FlinkRuntimeException;
 
 import io.debezium.relational.TableId;
@@ -219,8 +220,8 @@ public class PostgresSourceBuilder<T> {
      * The chunk key of table snapshot, captured tables are split into multiple chunks by the chunk
      * key column when read the snapshot of table.
      */
-    public PostgresSourceBuilder<T> chunkKeyColumn(String chunkKeyColumn) {
-        this.configFactory.chunkKeyColumn(chunkKeyColumn);
+    public PostgresSourceBuilder<T> chunkKeyColumn(ObjectPath objectPath, String chunkKeyColumn) {
+        this.configFactory.chunkKeyColumn(objectPath, chunkKeyColumn);
         return this;
     }
 

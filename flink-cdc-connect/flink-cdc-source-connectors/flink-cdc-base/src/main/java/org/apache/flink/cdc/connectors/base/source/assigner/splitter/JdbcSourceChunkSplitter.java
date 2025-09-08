@@ -24,6 +24,7 @@ import org.apache.flink.cdc.connectors.base.source.assigner.state.ChunkSplitterS
 import org.apache.flink.cdc.connectors.base.source.meta.split.SnapshotSplit;
 import org.apache.flink.cdc.connectors.base.source.utils.JdbcChunkUtils;
 import org.apache.flink.cdc.connectors.base.utils.ObjectUtils;
+import org.apache.flink.table.catalog.ObjectPath;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.logical.LogicalTypeRoot;
 import org.apache.flink.table.types.logical.RowType;
@@ -256,8 +257,8 @@ public abstract class JdbcSourceChunkSplitter implements ChunkSplitter {
      * @param chunkKeyColumn column name which is seen as chunk key, if chunkKeyColumn is null, use
      *     primary key instead. @Column the column which is seen as chunk key.
      */
-    protected Column getSplitColumn(Table table, @Nullable String chunkKeyColumn) {
-        return JdbcChunkUtils.getSplitColumn(table, chunkKeyColumn);
+    protected Column getSplitColumn(Table table, @Nullable Map<ObjectPath, String> chunkKeyColumns) {
+        return JdbcChunkUtils.getSplitColumn(table, chunkKeyColumns);
     }
 
     /** ChunkEnd less than or equal to max. */

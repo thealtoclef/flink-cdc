@@ -18,6 +18,7 @@
 package org.apache.flink.cdc.connectors.base.source.utils;
 
 import org.apache.flink.table.api.ValidationException;
+import org.apache.flink.table.catalog.ObjectPath;
 
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Column;
@@ -27,6 +28,7 @@ import javax.annotation.Nullable;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -107,30 +109,30 @@ public class JdbcChunkUtils {
      * @param chunkKeyColumn column name which is seen as chunk key, if chunkKeyColumn is null, use
      *     primary key instead. @Column the column which is seen as chunk key.
      */
-    public static Column getSplitColumn(Table table, @Nullable String chunkKeyColumn) {
+    public static Column getSplitColumn(Table table, @Nullable Map<ObjectPath, String> chunkKeyColumns) {
         List<Column> primaryKeys = table.primaryKeyColumns();
-        if (primaryKeys.isEmpty() && chunkKeyColumn == null) {
+        if (primaryKeys.isEmpty() && chunkKeyColumns == null) {
             throw new ValidationException(
                     "To use incremental snapshot, 'scan.incremental.snapshot.chunk.key-column' must be set when the table doesn't have primary keys.");
         }
 
         List<Column> searchColumns = table.columns();
-        if (chunkKeyColumn != null) {
-            Optional<Column> targetPkColumn =
-                    searchColumns.stream()
-                            .filter(col -> chunkKeyColumn.equals(col.name()))
-                            .findFirst();
-            if (targetPkColumn.isPresent()) {
-                return targetPkColumn.get();
-            }
-            throw new ValidationException(
-                    String.format(
-                            "Chunk key column '%s' doesn't exist in the columns [%s] of the table %s.",
-                            chunkKeyColumn,
-                            searchColumns.stream()
-                                    .map(Column::name)
-                                    .collect(Collectors.joining(",")),
-                            table.id()));
+        if (chunkKeyColumns != null) {
+        //     Optional<Column> targetPkColumn =
+        //             searchColumns.stream()
+        //                     .filter(col -> chunkKeyColumn.equals(col.name()))
+        //                     .findFirst();
+        //     if (targetPkColumn.isPresent()) {
+        //         return targetPkColumn.get();
+        //     }
+        //     throw new ValidationException(
+        //             String.format(
+        //                     "Chunk key column '%s' doesn't exist in the columns [%s] of the table %s.",
+        //                     chunkKeyColumn,
+        //                     searchColumns.stream()
+        //                             .map(Column::name)
+        //                             .collect(Collectors.joining(",")),
+        //                     table.id()));
         }
 
         // use first column of primary key columns as the chunk key column by default
