@@ -37,6 +37,7 @@ import org.apache.flink.table.connector.source.abilities.SupportsReadingMetadata
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.logical.RowType;
+import org.apache.flink.table.catalog.ObjectPath;
 
 import javax.annotation.Nullable;
 
@@ -223,7 +224,7 @@ public class PostgreSQLTableSource implements ScanTableSource, SupportsReadingMe
                             .connectMaxRetries(connectMaxRetries)
                             .connectionPoolSize(connectionPoolSize)
                             .startupOptions(startupOptions)
-                            .chunkKeyColumn(chunkKeyColumn)
+                            .chunkKeyColumn(new ObjectPath(schemaName, tableName), chunkKeyColumn)
                             .heartbeatInterval(heartbeatInterval)
                             .closeIdleReaders(closeIdleReaders)
                             .skipSnapshotBackfill(skipSnapshotBackfill)

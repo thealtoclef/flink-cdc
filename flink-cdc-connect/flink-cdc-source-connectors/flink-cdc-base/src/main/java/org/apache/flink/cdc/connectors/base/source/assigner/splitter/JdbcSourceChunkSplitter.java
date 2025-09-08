@@ -361,7 +361,7 @@ public abstract class JdbcSourceChunkSplitter implements ChunkSplitter {
         try {
             currentSchema = dialect.queryTableSchema(jdbcConnection, tableId);
             currentSplittingTable = Objects.requireNonNull(currentSchema).getTable();
-            splitColumn = getSplitColumn(currentSplittingTable, sourceConfig.getChunkKeyColumn());
+            splitColumn = getSplitColumn(currentSplittingTable, sourceConfig.getChunkKeyColumns());
             splitType = getSplitType(splitColumn);
             minMaxOfSplitColumn = queryMinMax(jdbcConnection, tableId, splitColumn);
             approximateRowCnt = queryApproximateRowCnt(jdbcConnection, tableId);

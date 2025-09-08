@@ -23,6 +23,8 @@ import org.apache.flink.table.catalog.ObjectPath;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
+import io.debezium.relational.TableId;
+import io.debezium.relational.Tables;
 
 import javax.annotation.Nullable;
 
@@ -102,6 +104,43 @@ public class JdbcChunkUtils {
                 });
     }
 
+    // Write createTableFilter method here to avoid the dependency on DebeziumUtils
+    private static Tables.TableFilter createTableFilter(String schemaName, String tableName) {
+        return new Tables.TableFilter() {
+            @Override
+            public boolean isIncluded(TableId tableId) {
+                final String catalog = tableId.catalog();
+                final String schema = tableId.schema();
+                final String table = tableId.table();
+                
+                if (schemaName != null && !schemaName.equalsIgnoreCase(schema)) {
+                    return false;
+                }
+                
+                if (tableName != null && !tableName.equalsIgnoreCase(table)) {
+                    return false;
+                }
+                
+                return true;
+            }
+        };
+    }
+
+
+    @Nullable
+    private static String findChunkKeyColumn(
+            TableId tableId, Map<ObjectPath, String> chunkKeyColumns) {
+        String schemaName = tableId.schema();
+        for (ObjectPath table : chunkKeyColumns.keySet()) {
+            Tables.TableFilter filter =
+                    createTableFilter(schemaName, table.getObjectName());
+            if (filter.isIncluded(tableId)) {
+                return chunkKeyColumns.get(table);
+            }
+        }
+        return null;
+    }
+
     /**
      * Get the column which is seen as chunk key.
      *
@@ -111,28 +150,29 @@ public class JdbcChunkUtils {
      */
     public static Column getSplitColumn(Table table, @Nullable Map<ObjectPath, String> chunkKeyColumns) {
         List<Column> primaryKeys = table.primaryKeyColumns();
-        if (primaryKeys.isEmpty() && chunkKeyColumns == null) {
+        String chunkKeyColumn = findChunkKeyColumn(table.id(), chunkKeyColumns);
+        if (primaryKeys.isEmpty() && chunkKeyColumn == null) {
             throw new ValidationException(
                     "To use incremental snapshot, 'scan.incremental.snapshot.chunk.key-column' must be set when the table doesn't have primary keys.");
         }
 
         List<Column> searchColumns = table.columns();
-        if (chunkKeyColumns != null) {
-        //     Optional<Column> targetPkColumn =
-        //             searchColumns.stream()
-        //                     .filter(col -> chunkKeyColumn.equals(col.name()))
-        //                     .findFirst();
-        //     if (targetPkColumn.isPresent()) {
-        //         return targetPkColumn.get();
-        //     }
-        //     throw new ValidationException(
-        //             String.format(
-        //                     "Chunk key column '%s' doesn't exist in the columns [%s] of the table %s.",
-        //                     chunkKeyColumn,
-        //                     searchColumns.stream()
-        //                             .map(Column::name)
-        //                             .collect(Collectors.joining(",")),
-        //                     table.id()));
+        if (chunkKeyColumn != null) {
+            Optional<Column> targetPkColumn =
+                    searchColumns.stream()
+                            .filter(col -> chunkKeyColumn.equals(col.name()))
+                            .findFirst();
+            if (targetPkColumn.isPresent()) {
+                return targetPkColumn.get();
+            }
+            throw new ValidationException(
+                    String.format(
+                            "Chunk key column '%s' doesn't exist in the columns [%s] of the table %s.",
+                            chunkKeyColumn,
+                            searchColumns.stream()
+                                    .map(Column::name)
+                                    .collect(Collectors.joining(",")),
+                            table.id()));
         }
 
         // use first column of primary key columns as the chunk key column by default
