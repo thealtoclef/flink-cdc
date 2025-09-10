@@ -46,6 +46,8 @@ import org.apache.flink.table.catalog.ObjectPath;
 import org.apache.flink.util.FlinkRuntimeException;
 
 import io.debezium.relational.TableId;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.List;
@@ -60,6 +62,8 @@ public class PostgresSourceBuilder<T> {
 
     private final PostgresSourceConfigFactory configFactory = new PostgresSourceConfigFactory();
     private DebeziumDeserializationSchema<T> deserializer;
+
+    private static final Logger LOG = LoggerFactory.getLogger(PostgresSourceBuilder.class);
 
     private PostgresSourceBuilder() {}
 
@@ -221,6 +225,7 @@ public class PostgresSourceBuilder<T> {
      * key column when read the snapshot of table.
      */
     public PostgresSourceBuilder<T> chunkKeyColumn(ObjectPath objectPath, String chunkKeyColumn) {
+        LOG.info("Setting chunk key column for table " + objectPath + " to " + chunkKeyColumn);
         this.configFactory.chunkKeyColumn(objectPath, chunkKeyColumn);
         return this;
     }
