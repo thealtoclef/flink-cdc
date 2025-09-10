@@ -112,28 +112,26 @@ public class JdbcChunkUtils {
                 final String catalog = tableId.catalog();
                 final String schema = tableId.schema();
                 final String table = tableId.table();
-                
+
                 if (schemaName != null && !schemaName.equalsIgnoreCase(schema)) {
                     return false;
                 }
-                
+
                 if (tableName != null && !tableName.equalsIgnoreCase(table)) {
                     return false;
                 }
-                
+
                 return true;
             }
         };
     }
-
 
     @Nullable
     private static String findChunkKeyColumn(
             TableId tableId, Map<ObjectPath, String> chunkKeyColumns) {
         String schemaName = tableId.schema();
         for (ObjectPath table : chunkKeyColumns.keySet()) {
-            Tables.TableFilter filter =
-                    createTableFilter(schemaName, table.getObjectName());
+            Tables.TableFilter filter = createTableFilter(schemaName, table.getObjectName());
             if (filter.isIncluded(tableId)) {
                 return chunkKeyColumns.get(table);
             }
@@ -148,7 +146,8 @@ public class JdbcChunkUtils {
      * @param chunkKeyColumn column name which is seen as chunk key, if chunkKeyColumn is null, use
      *     primary key instead. @Column the column which is seen as chunk key.
      */
-    public static Column getSplitColumn(Table table, @Nullable Map<ObjectPath, String> chunkKeyColumns) {
+    public static Column getSplitColumn(
+            Table table, @Nullable Map<ObjectPath, String> chunkKeyColumns) {
         List<Column> primaryKeys = table.primaryKeyColumns();
         String chunkKeyColumn = findChunkKeyColumn(table.id(), chunkKeyColumns);
         if (primaryKeys.isEmpty() && chunkKeyColumn == null) {

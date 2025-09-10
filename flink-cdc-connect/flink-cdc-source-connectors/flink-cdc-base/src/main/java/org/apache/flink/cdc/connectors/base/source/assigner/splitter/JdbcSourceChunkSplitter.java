@@ -254,10 +254,12 @@ public abstract class JdbcSourceChunkSplitter implements ChunkSplitter {
      * Get the column which is seen as chunk key.
      *
      * @param table table identity.
-     * @param chunkKeyColumn column name which is seen as chunk key, if chunkKeyColumn is null, use
-     *     primary key instead. @Column the column which is seen as chunk key.
+     * @param chunkKeyColumns column name which is seen as chunk key, if chunkKeyColumns is null,
+     *     use primary key instead.
+     * @return the column which is seen as chunk key.
      */
-    protected Column getSplitColumn(Table table, @Nullable Map<ObjectPath, String> chunkKeyColumns) {
+    protected Column getSplitColumn(
+            Table table, @Nullable Map<ObjectPath, String> chunkKeyColumns) {
         return JdbcChunkUtils.getSplitColumn(table, chunkKeyColumns);
     }
 
