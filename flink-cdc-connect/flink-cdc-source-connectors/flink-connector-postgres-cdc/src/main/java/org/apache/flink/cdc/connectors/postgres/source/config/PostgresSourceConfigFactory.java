@@ -186,8 +186,18 @@ public class PostgresSourceConfigFactory extends JdbcSourceConfigFactory {
         this.lsnCommitCheckpointsDelay = lsnCommitCheckpointsDelay;
     }
 
-    public PostgresSourceConfigFactory chunkKeyColumns(Map<ObjectPath, String> chunkKeyColumns) {
-        this.chunkKeyColumns = chunkKeyColumns;
+    /**
+     * The chunk key of table snapshot, captured tables are split into multiple chunks by the chunk
+     * key column when read the snapshot of table.
+     */
+    public PostgresSourceConfigFactory chunkKeyColumn(
+            ObjectPath objectPath, String chunkKeyColumn) {
+        this.chunkKeyColumns.put(objectPath, chunkKeyColumn);
+        return this;
+    }
+
+    public PostgresSourceConfigFactory chunkKeyColumn(Map<ObjectPath, String> chunkKeyColumns) {
+        this.chunkKeyColumns.putAll(chunkKeyColumns);
         return this;
     }
 }
