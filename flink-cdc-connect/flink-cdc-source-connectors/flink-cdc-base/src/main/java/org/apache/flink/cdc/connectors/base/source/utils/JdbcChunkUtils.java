@@ -143,7 +143,7 @@ public class JdbcChunkUtils {
      * Get the column which is seen as chunk key.
      *
      * @param table table identity.
-     * @param chunkKeyColumn column name which is seen as chunk key, if chunkKeyColumn is null, use
+     * @param chunkKeyColumns column name which is seen as chunk key, if chunkKeyColumn is null, use
      *     primary key instead. @Column the column which is seen as chunk key.
      */
     public static Column getSplitColumn(
