@@ -70,6 +70,7 @@ public class PostgresSourceConfig extends JdbcSourceConfig {
             boolean isScanNewlyAddedTableEnabled,
             int lsnCommitCheckpointsDelay,
             boolean assignUnboundedChunkFirst) {
+
         super(
                 startupOptions,
                 databaseList,
@@ -97,8 +98,101 @@ public class PostgresSourceConfig extends JdbcSourceConfig {
                 skipSnapshotBackfill,
                 isScanNewlyAddedTableEnabled,
                 assignUnboundedChunkFirst);
+
         this.subtaskId = subtaskId;
         this.lsnCommitCheckpointsDelay = lsnCommitCheckpointsDelay;
+
+        // DEBUG: Log constructor parameters after super() call
+        logConstructorParameters(
+                subtaskId,
+                startupOptions,
+                databaseList,
+                schemaList,
+                tableList,
+                splitSize,
+                splitMetaGroupSize,
+                distributionFactorUpper,
+                distributionFactorLower,
+                includeSchemaChanges,
+                closeIdleReaders,
+                dbzProperties,
+                dbzConfiguration,
+                driverClassName,
+                hostname,
+                port,
+                username,
+                password,
+                fetchSize,
+                serverTimeZone,
+                connectTimeout,
+                connectMaxRetries,
+                connectionPoolSize,
+                chunkKeyColumns,
+                skipSnapshotBackfill,
+                isScanNewlyAddedTableEnabled,
+                lsnCommitCheckpointsDelay,
+                assignUnboundedChunkFirst);
+    }
+
+    private void logConstructorParameters(
+            int subtaskId,
+            StartupOptions startupOptions,
+            List<String> databaseList,
+            List<String> schemaList,
+            List<String> tableList,
+            int splitSize,
+            int splitMetaGroupSize,
+            double distributionFactorUpper,
+            double distributionFactorLower,
+            boolean includeSchemaChanges,
+            boolean closeIdleReaders,
+            Properties dbzProperties,
+            Configuration dbzConfiguration,
+            String driverClassName,
+            String hostname,
+            int port,
+            String username,
+            String password,
+            int fetchSize,
+            String serverTimeZone,
+            Duration connectTimeout,
+            int connectMaxRetries,
+            int connectionPoolSize,
+            Map<ObjectPath, String> chunkKeyColumns,
+            boolean skipSnapshotBackfill,
+            boolean isScanNewlyAddedTableEnabled,
+            int lsnCommitCheckpointsDelay,
+            boolean assignUnboundedChunkFirst) {
+
+        System.out.println("DEBUG: PostgresSourceConfig constructor called with parameters:");
+        System.out.println("  subtaskId: " + subtaskId);
+        System.out.println("  startupOptions: " + startupOptions);
+        System.out.println("  databaseList: " + databaseList);
+        System.out.println("  schemaList: " + schemaList);
+        System.out.println("  tableList: " + tableList);
+        System.out.println("  splitSize: " + splitSize);
+        System.out.println("  splitMetaGroupSize: " + splitMetaGroupSize);
+        System.out.println("  distributionFactorUpper: " + distributionFactorUpper);
+        System.out.println("  distributionFactorLower: " + distributionFactorLower);
+        System.out.println("  includeSchemaChanges: " + includeSchemaChanges);
+        System.out.println("  closeIdleReaders: " + closeIdleReaders);
+        System.out.println("  dbzProperties: " + dbzProperties);
+        System.out.println("  dbzConfiguration: " + dbzConfiguration);
+        System.out.println("  driverClassName: " + driverClassName);
+        System.out.println("  hostname: " + hostname);
+        System.out.println("  port: " + port);
+        System.out.println("  username: " + username);
+        System.out.println("  fetchSize: " + fetchSize);
+        System.out.println("  serverTimeZone: " + serverTimeZone);
+        System.out.println("  connectTimeout: " + connectTimeout);
+        System.out.println("  connectMaxRetries: " + connectMaxRetries);
+        System.out.println("  connectionPoolSize: " + connectionPoolSize);
+        System.out.println("  chunkKeyColumns: " + chunkKeyColumns);
+        System.out.println("  skipSnapshotBackfill: " + skipSnapshotBackfill);
+        System.out.println("  isScanNewlyAddedTableEnabled: " + isScanNewlyAddedTableEnabled);
+        System.out.println("  lsnCommitCheckpointsDelay: " + lsnCommitCheckpointsDelay);
+        System.out.println("  assignUnboundedChunkFirst: " + assignUnboundedChunkFirst);
+        System.out.println("DEBUG: PostgresSourceConfig constructor completed successfully");
     }
 
     /**

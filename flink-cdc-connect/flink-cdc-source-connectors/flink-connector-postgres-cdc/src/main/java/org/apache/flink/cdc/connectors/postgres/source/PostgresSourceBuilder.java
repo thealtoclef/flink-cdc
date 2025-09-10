@@ -311,10 +311,28 @@ public class PostgresSourceBuilder<T> {
      * @return a PostgresParallelSource with the settings made for this builder.
      */
     public PostgresIncrementalSource<T> build() {
-        PostgresOffsetFactory offsetFactory = new PostgresOffsetFactory();
-        PostgresDialect dialect = new PostgresDialect(configFactory.create(0));
-        return new PostgresIncrementalSource<>(
-                configFactory, checkNotNull(deserializer), offsetFactory, dialect);
+        System.out.println("DEBUG: PostgresSourceBuilder.build() called");
+        System.out.println("  deserializer: " + deserializer);
+        System.out.println("  configFactory: " + configFactory);
+
+        try {
+            PostgresOffsetFactory offsetFactory = new PostgresOffsetFactory();
+            System.out.println("DEBUG: PostgresOffsetFactory created successfully");
+
+            PostgresDialect dialect = new PostgresDialect(configFactory.create(0));
+            System.out.println("DEBUG: PostgresDialect created successfully");
+
+            PostgresIncrementalSource<T> source =
+                    new PostgresIncrementalSource<>(
+                            configFactory, checkNotNull(deserializer), offsetFactory, dialect);
+            System.out.println("DEBUG: PostgresIncrementalSource created successfully");
+
+            return source;
+        } catch (Exception e) {
+            System.out.println("ERROR: PostgresSourceBuilder.build() failed: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
     }
 
     public PostgresSourceConfigFactory getConfigFactory() {

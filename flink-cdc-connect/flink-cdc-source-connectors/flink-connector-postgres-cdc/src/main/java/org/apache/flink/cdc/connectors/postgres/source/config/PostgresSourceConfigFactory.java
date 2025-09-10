@@ -110,35 +110,58 @@ public class PostgresSourceConfigFactory extends JdbcSourceConfigFactory {
         props.setProperty("snapshot.mode", "never");
 
         Configuration dbzConfiguration = Configuration.from(props);
-        return new PostgresSourceConfig(
-                subtaskId,
-                startupOptions,
-                Collections.singletonList(database),
-                schemaList,
-                tableList,
-                splitSize,
-                splitMetaGroupSize,
-                distributionFactorUpper,
-                distributionFactorLower,
-                includeSchemaChanges,
-                closeIdleReaders,
-                props,
-                dbzConfiguration,
-                JDBC_DRIVER,
-                hostname,
-                port,
-                username,
-                password,
-                fetchSize,
-                serverTimeZone,
-                connectTimeout,
-                connectMaxRetries,
-                connectionPoolSize,
-                chunkKeyColumns,
-                skipSnapshotBackfill,
-                scanNewlyAddedTableEnabled,
-                lsnCommitCheckpointsDelay,
-                assignUnboundedChunkFirst);
+
+        // DEBUG: Log parameters before creating PostgresSourceConfig
+        System.out.println("DEBUG: PostgresSourceConfigFactory.create() called with:");
+        System.out.println("  subtaskId: " + subtaskId);
+        System.out.println("  startupOptions: " + startupOptions);
+        System.out.println("  database: " + database);
+        System.out.println("  schemaList: " + schemaList);
+        System.out.println("  tableList: " + tableList);
+        System.out.println("  hostname: " + hostname);
+        System.out.println("  port: " + port);
+        System.out.println("  username: " + username);
+        System.out.println("  JDBC_DRIVER: " + JDBC_DRIVER);
+        System.out.println("  chunkKeyColumns: " + chunkKeyColumns);
+        System.out.println("  scanNewlyAddedTableEnabled: " + scanNewlyAddedTableEnabled);
+        System.out.println("  lsnCommitCheckpointsDelay: " + lsnCommitCheckpointsDelay);
+        System.out.println("  assignUnboundedChunkFirst: " + assignUnboundedChunkFirst);
+
+        try {
+            return new PostgresSourceConfig(
+                    subtaskId,
+                    startupOptions,
+                    Collections.singletonList(database),
+                    schemaList,
+                    tableList,
+                    splitSize,
+                    splitMetaGroupSize,
+                    distributionFactorUpper,
+                    distributionFactorLower,
+                    includeSchemaChanges,
+                    closeIdleReaders,
+                    props,
+                    dbzConfiguration,
+                    JDBC_DRIVER,
+                    hostname,
+                    port,
+                    username,
+                    password,
+                    fetchSize,
+                    serverTimeZone,
+                    connectTimeout,
+                    connectMaxRetries,
+                    connectionPoolSize,
+                    chunkKeyColumns,
+                    skipSnapshotBackfill,
+                    scanNewlyAddedTableEnabled,
+                    lsnCommitCheckpointsDelay,
+                    assignUnboundedChunkFirst);
+        } catch (Exception e) {
+            System.out.println("ERROR: PostgresSourceConfig creation failed: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
     }
 
     /**
