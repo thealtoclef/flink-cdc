@@ -119,6 +119,10 @@ public class PostgresSourceConfig extends JdbcSourceConfig {
         return this.lsnCommitCheckpointsDelay;
     }
 
+    public Map<ObjectPath, String> getChunkKeyColumns() {
+        return chunkKeyColumns;
+    }
+
     /**
      * Returns the slot name for backfill task.
      *
