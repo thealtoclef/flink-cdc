@@ -49,6 +49,7 @@ import io.debezium.relational.TableId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Constructor;
 import java.time.Duration;
 import java.util.List;
 import java.util.Properties;
@@ -311,28 +312,25 @@ public class PostgresSourceBuilder<T> {
      * @return a PostgresParallelSource with the settings made for this builder.
      */
     public PostgresIncrementalSource<T> build() {
-        System.out.println("DEBUG: PostgresSourceBuilder.build() called");
-        System.out.println("  deserializer: " + deserializer);
-        System.out.println("  configFactory: " + configFactory);
+        PostgresOffsetFactory offsetFactory = new PostgresOffsetFactory();
+        // get params of jdbcsourceconfig
 
-        try {
-            PostgresOffsetFactory offsetFactory = new PostgresOffsetFactory();
-            System.out.println("DEBUG: PostgresOffsetFactory created successfully");
-
-            PostgresDialect dialect = new PostgresDialect(configFactory.create(0));
-            System.out.println("DEBUG: PostgresDialect created successfully");
-
-            PostgresIncrementalSource<T> source =
-                    new PostgresIncrementalSource<>(
-                            configFactory, checkNotNull(deserializer), offsetFactory, dialect);
-            System.out.println("DEBUG: PostgresIncrementalSource created successfully");
-
-            return source;
-        } catch (Exception e) {
-            System.out.println("ERROR: PostgresSourceBuilder.build() failed: " + e.getMessage());
-            e.printStackTrace();
-            throw e;
+        Constructor<?>[] constructors = JdbcSourceConfig.class.getDeclaredConstructors();
+        for (Constructor<?> constructor : constructors) {
+            // Get params type of constructor
+            Class<?>[] parameterTypes = constructor.getParameterTypes();
+            LOG.info("Constructor: " + constructor + ", parameter types: ");
+            for (Class<?> paramType : parameterTypes) {
+                LOG.info(" \n " + paramType.getName());
+            }
         }
+        PostgresDialect dialect = new PostgresDialect(configFactory.create(0));
+
+        PostgresIncrementalSource<T> source =
+                new PostgresIncrementalSource<>(
+                        configFactory, checkNotNull(deserializer), offsetFactory, dialect);
+
+        return source;
     }
 
     public PostgresSourceConfigFactory getConfigFactory() {
