@@ -38,7 +38,7 @@ limitations under the License.
             <artifactId>flink-cdc-base</artifactId>
             <version>${project.version}</version>
             <scope>system</scope>
-            <systemPath>${project.basedir}/flink-cdc-base-3.5-SNAPSHOT.jar</systemPath>
+            <systemPath>${project.basedir}/flink-cdc-base.jar</systemPath>
         </dependency>
 
         <!-- Debezium dependencies -->
