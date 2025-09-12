@@ -25,11 +25,8 @@ import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.esotericsoftware.minlog.Log;
 
 import javax.annotation.Nullable;
 
@@ -43,7 +40,7 @@ import static org.apache.flink.cdc.connectors.base.utils.SourceRecordUtils.rowTo
 
 /** Utilities to split chunks of table. */
 public class JdbcChunkUtils {
-    
+
     private static final Logger LOG = LoggerFactory.getLogger(JdbcChunkUtils.class);
 
     /**
@@ -137,22 +134,28 @@ public class JdbcChunkUtils {
     private static String findChunkKeyColumn(
             TableId tableId, Map<ObjectPath, String> chunkKeyColumns) {
         String schemaName = tableId.schema();
-        LOG.info("🚀 Finding chunk key column for table: {}, schema: {}, available chunk key columns: {}", 
-                 tableId, schemaName, chunkKeyColumns);
-        
+        LOG.info(
+                "🚀 Finding chunk key column for table: {}, schema: {}, available chunk key columns: {}",
+                tableId,
+                schemaName,
+                chunkKeyColumns);
+
         for (ObjectPath table : chunkKeyColumns.keySet()) {
             Tables.TableFilter filter = createTableFilter(schemaName, table.getObjectName());
             if (filter.isIncluded(tableId)) {
                 LOG.info("🎯 Table filter matched! Table '{}' is included in the filter", tableId);
                 String chunkKeyColumn = chunkKeyColumns.get(table);
-                LOG.info("✅ Found matching chunk key column '{}' for table '{}' from configured table '{}'", 
-                         chunkKeyColumn, tableId, table);
+                LOG.info(
+                        "✅ Found matching chunk key column '{}' for table '{}' from configured table '{}'",
+                        chunkKeyColumn,
+                        tableId,
+                        table);
                 return chunkKeyColumn;
             } else {
                 LOG.info("❌ Table filter did not match for table '{}'", tableId);
             }
         }
-        
+
         LOG.info("❌ No chunk key column found for table: {}", tableId);
         return null;
     }
