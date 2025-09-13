@@ -77,6 +77,7 @@ public abstract class JdbcSourceFetchTaskContext implements FetchTask.Context {
     public boolean isRecordBetween(SourceRecord record, Object[] splitStart, Object[] splitEnd) {
         LOG.info("Check record {} between {} and {}", record, splitStart, splitEnd);
         RowType splitKeyType = getSplitType(getDatabaseSchema().tableFor(this.getTableId(record)));
+        LOG.info("Split key type: {}", splitKeyType);
         Object[] key = SourceRecordUtils.getSplitKey(splitKeyType, record, getSchemaNameAdjuster());
         return SourceRecordUtils.splitKeyRangeContains(key, splitStart, splitEnd);
     }

@@ -49,7 +49,6 @@ import io.debezium.relational.TableId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.Constructor;
 import java.time.Duration;
 import java.util.List;
 import java.util.Properties;
@@ -313,17 +312,6 @@ public class PostgresSourceBuilder<T> {
      */
     public PostgresIncrementalSource<T> build() {
         PostgresOffsetFactory offsetFactory = new PostgresOffsetFactory();
-        // get params of jdbcsourceconfig
-
-        Constructor<?>[] constructors = JdbcSourceConfig.class.getDeclaredConstructors();
-        for (Constructor<?> constructor : constructors) {
-            // Get params type of constructor
-            Class<?>[] parameterTypes = constructor.getParameterTypes();
-            LOG.info("Constructor: " + constructor + ", parameter types: ");
-            for (Class<?> paramType : parameterTypes) {
-                LOG.info(" \n " + paramType.getName());
-            }
-        }
         PostgresDialect dialect = new PostgresDialect(configFactory.create(0));
 
         PostgresIncrementalSource<T> source =
