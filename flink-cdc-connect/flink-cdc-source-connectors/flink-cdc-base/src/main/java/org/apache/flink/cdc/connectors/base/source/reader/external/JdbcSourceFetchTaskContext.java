@@ -37,14 +37,14 @@ import io.debezium.relational.TableId;
 import io.debezium.util.SchemaNameAdjuster;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** The context for fetch task that fetching data of snapshot split from JDBC data source. */
 @Internal
