@@ -43,11 +43,13 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** The context for fetch task that fetching data of snapshot split from JDBC data source. */
 @Internal
 public abstract class JdbcSourceFetchTaskContext implements FetchTask.Context {
-
+    private static final Logger LOG = LoggerFactory.getLogger(JdbcSourceFetchTaskContext.class);
     protected final JdbcSourceConfig sourceConfig;
     protected final JdbcDataSourceDialect dataSourceDialect;
     protected CommonConnectorConfig dbzConnectorConfig;
@@ -73,6 +75,7 @@ public abstract class JdbcSourceFetchTaskContext implements FetchTask.Context {
 
     @Override
     public boolean isRecordBetween(SourceRecord record, Object[] splitStart, Object[] splitEnd) {
+        LOG.info("Check record {} between {} and {}", record, splitStart, splitEnd);
         RowType splitKeyType = getSplitType(getDatabaseSchema().tableFor(this.getTableId(record)));
         Object[] key = SourceRecordUtils.getSplitKey(splitKeyType, record, getSchemaNameAdjuster());
         return SourceRecordUtils.splitKeyRangeContains(key, splitStart, splitEnd);
