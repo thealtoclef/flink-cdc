@@ -134,29 +134,14 @@ public class JdbcChunkUtils {
     private static String findChunkKeyColumn(
             TableId tableId, Map<ObjectPath, String> chunkKeyColumns) {
         String schemaName = tableId.schema();
-        LOG.info(
-                "🚀 Finding chunk key column for table: {}, schema: {}, available chunk key columns: {}",
-                tableId,
-                schemaName,
-                chunkKeyColumns);
-
         for (ObjectPath table : chunkKeyColumns.keySet()) {
             Tables.TableFilter filter = createTableFilter(schemaName, table.getObjectName());
             if (filter.isIncluded(tableId)) {
-                LOG.info("🎯 Table filter matched! Table '{}' is included in the filter", tableId);
                 String chunkKeyColumn = chunkKeyColumns.get(table);
-                LOG.info(
-                        "✅ Found matching chunk key column '{}' for table '{}' from configured table '{}'",
-                        chunkKeyColumn,
-                        tableId,
-                        table);
                 return chunkKeyColumn;
-            } else {
-                LOG.info("❌ Table filter did not match for table '{}'", tableId);
             }
         }
 
-        LOG.info("❌ No chunk key column found for table: {}", tableId);
         return null;
     }
 
