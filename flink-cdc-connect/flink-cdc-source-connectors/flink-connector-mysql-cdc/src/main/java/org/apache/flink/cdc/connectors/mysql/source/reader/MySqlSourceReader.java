@@ -154,7 +154,9 @@ public class MySqlSourceReader<T>
 
     @Override
     protected void onSplitFinished(Map<String, MySqlSplitState> finishedSplitIds) {
-        LOG.info("🔍 [DEBUG] onSplitFinished called with {} finished splits", finishedSplitIds.size());
+        LOG.info(
+                "🔍 [DEBUG] onSplitFinished called with {} finished splits",
+                finishedSplitIds.size());
         boolean requestNextSplit = true;
         if (isNewlyAddedTableSplitAndBinlogSplit(finishedSplitIds)) {
             LOG.info("🔍 [DEBUG] Processing newly added table split and binlog split");
@@ -176,10 +178,14 @@ public class MySqlSourceReader<T>
             Preconditions.checkState(finishedSplitIds.size() == 1);
             for (MySqlSplitState mySqlSplitState : finishedSplitIds.values()) {
                 MySqlSplit mySqlSplit = mySqlSplitState.toMySqlSplit();
-                LOG.info("🔍 [DEBUG] Processing finished split - splitId: {}, isSnapshotSplit: {}, isBinlogSplit: {}",
-                        mySqlSplit.splitId(), mySqlSplit.isSnapshotSplit(), mySqlSplit.isBinlogSplit());
+                LOG.info(
+                        "🔍 [DEBUG] Processing finished split - splitId: {}, isSnapshotSplit: {}, isBinlogSplit: {}",
+                        mySqlSplit.splitId(),
+                        mySqlSplit.isSnapshotSplit(),
+                        mySqlSplit.isBinlogSplit());
                 if (mySqlSplit.isBinlogSplit()) {
-                    LOG.info("🔍 [DEBUG] Processing finished binlog split - checking if reader is suspended: {}",
+                    LOG.info(
+                            "🔍 [DEBUG] Processing finished binlog split - checking if reader is suspended: {}",
                             mySqlSourceReaderContext.isBinlogSplitReaderSuspended());
                     // Two possibilities that finish a binlog split:
                     //
@@ -191,7 +197,8 @@ public class MySqlSourceReader<T>
                     // 2. Binlog reader reaches the ending offset of the split. We need to do
                     // nothing under this case.
                     if (mySqlSourceReaderContext.isBinlogSplitReaderSuspended()) {
-                        LOG.warn("🔍 [DEBUG] BINLOG SPLIT READER IS SUSPENDED - this might be why no changes are detected!");
+                        LOG.warn(
+                                "🔍 [DEBUG] BINLOG SPLIT READER IS SUSPENDED - this might be why no changes are detected!");
                         suspendedBinlogSplit =
                                 MySqlBinlogSplit.toSuspendedBinlogSplit(mySqlSplit.asBinlogSplit());
                         LOG.info(
@@ -206,7 +213,9 @@ public class MySqlSourceReader<T>
                         LOG.info("🔍 [DEBUG] Binlog split finished normally - not suspended");
                     }
                 } else {
-                    LOG.info("🔍 [DEBUG] Adding finished snapshot split to finishedUnackedSplits: {}", mySqlSplit.splitId());
+                    LOG.info(
+                            "🔍 [DEBUG] Adding finished snapshot split to finishedUnackedSplits: {}",
+                            mySqlSplit.splitId());
                     finishedUnackedSplits.put(mySqlSplit.splitId(), mySqlSplit.asSnapshotSplit());
                 }
             }
@@ -217,7 +226,8 @@ public class MySqlSourceReader<T>
             LOG.info("🔍 [DEBUG] Requesting next split because requestNextSplit = true");
             context.sendSplitRequest();
         } else {
-            LOG.info("🔍 [DEBUG] NOT requesting next split because requestNextSplit = false (binlog reader suspended)");
+            LOG.info(
+                    "🔍 [DEBUG] NOT requesting next split because requestNextSplit = false (binlog reader suspended)");
         }
     }
 
@@ -246,17 +256,25 @@ public class MySqlSourceReader<T>
     private void addSplits(List<MySqlSplit> splits, boolean checkTableChangeForBinlogSplit) {
         // restore for finishedUnackedSplits
         List<MySqlSplit> unfinishedSplits = new ArrayList<>();
-        LOG.info("🔍 [DEBUG] Source reader {} received {} splits to process", subtaskId, splits.size());
+        LOG.info(
+                "🔍 [DEBUG] Source reader {} received {} splits to process",
+                subtaskId,
+                splits.size());
         for (MySqlSplit split : splits) {
             LOG.info("Source reader {} adds split {}", subtaskId, split);
             if (split.isSnapshotSplit()) {
                 MySqlSnapshotSplit snapshotSplit = split.asSnapshotSplit();
-                LOG.info("🔍 [DEBUG] Processing snapshot split - tableId: {}, splitId: {}, " +
-                        "splitStart: {}, splitEnd: {}, highWatermark: {}, snapshotReadFinished: {}",
+                LOG.info(
+                        "🔍 [DEBUG] Processing snapshot split - tableId: {}, splitId: {}, "
+                                + "splitStart: {}, splitEnd: {}, highWatermark: {}, snapshotReadFinished: {}",
                         snapshotSplit.getTableId(),
                         snapshotSplit.splitId(),
-                        snapshotSplit.getSplitStart() != null ? java.util.Arrays.toString(snapshotSplit.getSplitStart()) : "null",
-                        snapshotSplit.getSplitEnd() != null ? java.util.Arrays.toString(snapshotSplit.getSplitEnd()) : "null",
+                        snapshotSplit.getSplitStart() != null
+                                ? java.util.Arrays.toString(snapshotSplit.getSplitStart())
+                                : "null",
+                        snapshotSplit.getSplitEnd() != null
+                                ? java.util.Arrays.toString(snapshotSplit.getSplitEnd())
+                                : "null",
                         snapshotSplit.getHighWatermark(),
                         snapshotSplit.isSnapshotReadFinished());
 
@@ -289,8 +307,9 @@ public class MySqlSourceReader<T>
                 }
             } else {
                 MySqlBinlogSplit binlogSplit = split.asBinlogSplit();
-                LOG.info("🔍 [DEBUG] Processing binlog split - splitId: {}, isSuspended: {}, isCompleted: {}, " +
-                        "startingOffset: {}, finishedSnapshotSplitInfos size: {}",
+                LOG.info(
+                        "🔍 [DEBUG] Processing binlog split - splitId: {}, isSuspended: {}, isCompleted: {}, "
+                                + "startingOffset: {}, finishedSnapshotSplitInfos size: {}",
                         binlogSplit.splitId(),
                         binlogSplit.isSuspended(),
                         binlogSplit.isCompletedSplit(),
@@ -318,20 +337,25 @@ public class MySqlSourceReader<T>
                         !mySqlSourceReaderContext.isHasAssignedBinlogSplit()
                                 && sourceConfig.isScanNewlyAddedTableEnabled();
                 mySqlSourceReaderContext.setHasAssignedBinlogSplit(true);
-                LOG.info("🔍 [DEBUG] checkNewlyAddedTableSchema: {}, hasAssignedBinlogSplit: {}",
-                        checkNewlyAddedTableSchema, mySqlSourceReaderContext.isHasAssignedBinlogSplit());
+                LOG.info(
+                        "🔍 [DEBUG] checkNewlyAddedTableSchema: {}, hasAssignedBinlogSplit: {}",
+                        checkNewlyAddedTableSchema,
+                        mySqlSourceReaderContext.isHasAssignedBinlogSplit());
 
                 // the binlog split is suspended
                 if (binlogSplit.isSuspended()) {
-                    LOG.warn("🔍 [DEBUG] Binlog split is SUSPENDED - this might explain why no changes are detected!");
+                    LOG.warn(
+                            "🔍 [DEBUG] Binlog split is SUSPENDED - this might explain why no changes are detected!");
                     suspendedBinlogSplit = binlogSplit;
                     LOG.info("🔍 [DEBUG] Set suspendedBinlogSplit to: {}", binlogSplit.splitId());
                 } else if (!binlogSplit.isCompletedSplit()) {
-                    LOG.info("🔍 [DEBUG] Adding uncompleted binlog split to uncompletedBinlogSplits");
+                    LOG.info(
+                            "🔍 [DEBUG] Adding uncompleted binlog split to uncompletedBinlogSplits");
                     uncompletedBinlogSplits.put(binlogSplit.splitId(), binlogSplit);
                     requestBinlogSplitMetaIfNeeded(binlogSplit);
                 } else {
-                    LOG.info("🔍 [DEBUG] Binlog split is completed, removing from uncompleted and discovering schemas");
+                    LOG.info(
+                            "🔍 [DEBUG] Binlog split is completed, removing from uncompleted and discovering schemas");
                     uncompletedBinlogSplits.remove(binlogSplit.splitId());
                     MySqlBinlogSplit mySqlBinlogSplit =
                             discoverTableSchemasForBinlogSplit(
@@ -343,26 +367,33 @@ public class MySqlSourceReader<T>
                 context.sendSourceEventToCoordinator(new BinlogSplitAssignedEvent());
             }
         }
-        LOG.info("🔍 [DEBUG] After processing splits - unfinishedSplits size: {}, " +
-                "finishedUnackedSplits size: {}, uncompletedBinlogSplits size: {}, suspendedBinlogSplit: {}",
-                unfinishedSplits.size(), finishedUnackedSplits.size(), uncompletedBinlogSplits.size(),
+        LOG.info(
+                "🔍 [DEBUG] After processing splits - unfinishedSplits size: {}, "
+                        + "finishedUnackedSplits size: {}, uncompletedBinlogSplits size: {}, suspendedBinlogSplit: {}",
+                unfinishedSplits.size(),
+                finishedUnackedSplits.size(),
+                uncompletedBinlogSplits.size(),
                 suspendedBinlogSplit != null ? suspendedBinlogSplit.splitId() : "null");
 
         // notify split enumerator again about the finished unacked snapshot splits
         reportFinishedSnapshotSplitsIfNeed();
         // add all un-finished splits (including binlog split) to SourceReaderBase
         if (!unfinishedSplits.isEmpty()) {
-            LOG.info("🔍 [DEBUG] Adding {} unfinished splits to SourceReaderBase", unfinishedSplits.size());
+            LOG.info(
+                    "🔍 [DEBUG] Adding {} unfinished splits to SourceReaderBase",
+                    unfinishedSplits.size());
             super.addSplits(unfinishedSplits);
         } else if (suspendedBinlogSplit
                         != null // request new snapshot split if the binlog split is suspended
                 || getNumberOfCurrentlyAssignedSplits()
                         <= 1 // request when all splits are in removed tables
         ) {
-            LOG.info("🔍 [DEBUG] Requesting new split because binlog is suspended or low split count");
+            LOG.info(
+                    "🔍 [DEBUG] Requesting new split because binlog is suspended or low split count");
             context.sendSplitRequest();
         } else {
-            LOG.warn("🔍 [DEBUG] No unfinished splits and no suspended binlog split - this might be why no changes are detected!");
+            LOG.warn(
+                    "🔍 [DEBUG] No unfinished splits and no suspended binlog split - this might be why no changes are detected!");
         }
     }
 
@@ -426,18 +457,22 @@ public class MySqlSourceReader<T>
     }
 
     private void reportFinishedSnapshotSplitsIfNeed() {
-        LOG.info("🔍 [DEBUG] reportFinishedSnapshotSplitsIfNeed called - finishedUnackedSplits size: {}",
+        LOG.info(
+                "🔍 [DEBUG] reportFinishedSnapshotSplitsIfNeed called - finishedUnackedSplits size: {}",
                 finishedUnackedSplits.size());
         if (!finishedUnackedSplits.isEmpty()) {
             final Map<String, BinlogOffset> finishedOffsets = new HashMap<>();
             for (MySqlSnapshotSplit split : finishedUnackedSplits.values()) {
-                LOG.info("🔍 [DEBUG] Adding finished snapshot split {} with highWatermark {}",
-                        split.splitId(), split.getHighWatermark());
+                LOG.info(
+                        "🔍 [DEBUG] Adding finished snapshot split {} with highWatermark {}",
+                        split.splitId(),
+                        split.getHighWatermark());
                 finishedOffsets.put(split.splitId(), split.getHighWatermark());
             }
             FinishedSnapshotSplitsReportEvent reportEvent =
                     new FinishedSnapshotSplitsReportEvent(finishedOffsets);
-            LOG.info("🔍 [DEBUG] Sending FinishedSnapshotSplitsReportEvent with {} finished splits",
+            LOG.info(
+                    "🔍 [DEBUG] Sending FinishedSnapshotSplitsReportEvent with {} finished splits",
                     finishedOffsets.size());
             context.sendSourceEventToCoordinator(reportEvent);
             LOG.info(
