@@ -128,7 +128,17 @@ public class MySqlSourceReader<T>
 
     @Override
     public List<MySqlSplit> snapshotState(long checkpointId) {
+        LOG.info(
+                "🚀 [FIX] SNAPSHOT STATE: Starting snapshotState for checkpoint {} - finishedUnackedSplits size: {}, uncompletedBinlogSplits size: {}, suspendedBinlogSplit: {}",
+                checkpointId,
+                finishedUnackedSplits.size(),
+                uncompletedBinlogSplits.size(),
+                suspendedBinlogSplit != null ? suspendedBinlogSplit.splitId() : "null");
+
         List<MySqlSplit> stateSplits = super.snapshotState(checkpointId);
+        LOG.info(
+                "🚀 [FIX] SNAPSHOT STATE: super.snapshotState returned {} splits",
+                stateSplits.size());
 
         // unfinished splits
         List<MySqlSplit> unfinishedSplits =
@@ -136,16 +146,45 @@ public class MySqlSourceReader<T>
                         .filter(split -> !finishedUnackedSplits.containsKey(split.splitId()))
                         .collect(Collectors.toList());
 
+        LOG.info(
+                "🚀 [FIX] SNAPSHOT STATE: After filtering finished splits, unfinishedSplits size: {}",
+                unfinishedSplits.size());
+
         // add finished snapshot splits that did not receive ack yet
-        unfinishedSplits.addAll(finishedUnackedSplits.values());
+        if (!finishedUnackedSplits.isEmpty()) {
+            LOG.info(
+                    "🚀 [FIX] SNAPSHOT STATE: Adding {} finished splits to checkpoint state",
+                    finishedUnackedSplits.size());
+            for (MySqlSnapshotSplit split : finishedUnackedSplits.values()) {
+                LOG.info(
+                        "🚀 [FIX] SNAPSHOT STATE: Saving finished split {} with highWatermark {} to checkpoint",
+                        split.splitId(),
+                        split.getHighWatermark());
+            }
+            unfinishedSplits.addAll(finishedUnackedSplits.values());
+        } else {
+            LOG.info("🚀 [FIX] SNAPSHOT STATE: No finished splits to save to checkpoint");
+        }
 
         // add binlog splits who are uncompleted
-        unfinishedSplits.addAll(uncompletedBinlogSplits.values());
+        if (!uncompletedBinlogSplits.isEmpty()) {
+            LOG.info(
+                    "🚀 [FIX] SNAPSHOT STATE: Adding {} uncompleted binlog splits to checkpoint state",
+                    uncompletedBinlogSplits.size());
+            unfinishedSplits.addAll(uncompletedBinlogSplits.values());
+        }
 
         // add suspended BinlogSplit
         if (suspendedBinlogSplit != null) {
+            LOG.info(
+                    "🚀 [FIX] SNAPSHOT STATE: Adding suspended binlog split {} to checkpoint state",
+                    suspendedBinlogSplit.splitId());
             unfinishedSplits.add(suspendedBinlogSplit);
         }
+
+        LOG.info(
+                "🚀 [FIX] SNAPSHOT STATE: Final checkpoint state will contain {} splits",
+                unfinishedSplits.size());
 
         logCurrentBinlogOffsets(unfinishedSplits, checkpointId);
 
@@ -257,15 +296,29 @@ public class MySqlSourceReader<T>
         // restore for finishedUnackedSplits
         List<MySqlSplit> unfinishedSplits = new ArrayList<>();
         LOG.info(
-                "🔍 [DEBUG] Source reader {} received {} splits to process",
+                "🚀 [FIX] Source reader {} received {} splits to process (checkTableChangeForBinlogSplit: {})",
                 subtaskId,
-                splits.size());
+                splits.size(),
+                checkTableChangeForBinlogSplit);
+
+        // Log all received splits for debugging
+        for (MySqlSplit split : splits) {
+            LOG.info(
+                    "🚀 [FIX] Processing received split - ID: {}, Type: {}, isSnapshotFinished: {}",
+                    split.splitId(),
+                    split.isSnapshotSplit()
+                            ? "SNAPSHOT"
+                            : (split.isBinlogSplit() ? "BINLOG" : "UNKNOWN"),
+                    split.isSnapshotSplit()
+                            ? split.asSnapshotSplit().isSnapshotReadFinished()
+                            : "N/A");
+        }
         for (MySqlSplit split : splits) {
             LOG.info("Source reader {} adds split {}", subtaskId, split);
             if (split.isSnapshotSplit()) {
                 MySqlSnapshotSplit snapshotSplit = split.asSnapshotSplit();
                 LOG.info(
-                        "🔍 [DEBUG] Processing snapshot split - tableId: {}, splitId: {}, "
+                        "🚀 [FIX] Processing snapshot split - tableId: {}, splitId: {}, "
                                 + "splitStart: {}, splitEnd: {}, highWatermark: {}, snapshotReadFinished: {}",
                         snapshotSplit.getTableId(),
                         snapshotSplit.splitId(),
@@ -281,13 +334,18 @@ public class MySqlSourceReader<T>
                 if (sourceConfig.getTableFilter().test(split.asSnapshotSplit().getTableId())) {
                     if (snapshotSplit.isSnapshotReadFinished()) {
                         LOG.info(
-                                "🚀 Source reader {} restored a finished snapshot split {}",
+                                "🚀 [FIX] RESTORING FINISHED SPLIT: Source reader {} restored finished snapshot split {} with highWatermark {}",
                                 subtaskId,
-                                snapshotSplit);
+                                snapshotSplit.splitId(),
+                                snapshotSplit.getHighWatermark());
                         finishedUnackedSplits.put(snapshotSplit.splitId(), snapshotSplit);
+                        LOG.info(
+                                "🚀 [FIX] Added split {} to finishedUnackedSplits (now size: {})",
+                                snapshotSplit.splitId(),
+                                finishedUnackedSplits.size());
                     } else {
                         LOG.info(
-                                "   🚀 Source reader {} adds a unfinished snapshot split {}",
+                                "🚀 [FIX] RESTORING UNFINISHED SPLIT: Source reader {} adds unfinished snapshot split {}",
                                 subtaskId,
                                 snapshotSplit);
                         unfinishedSplits.add(split);
@@ -368,12 +426,20 @@ public class MySqlSourceReader<T>
             }
         }
         LOG.info(
-                "🔍 [DEBUG] After processing splits - unfinishedSplits size: {}, "
+                "🚀 [FIX] FINAL STATE: After processing splits - unfinishedSplits size: {}, "
                         + "finishedUnackedSplits size: {}, uncompletedBinlogSplits size: {}, suspendedBinlogSplit: {}",
                 unfinishedSplits.size(),
                 finishedUnackedSplits.size(),
                 uncompletedBinlogSplits.size(),
                 suspendedBinlogSplit != null ? suspendedBinlogSplit.splitId() : "null");
+
+        // Log finished splits if any
+        if (!finishedUnackedSplits.isEmpty()) {
+            LOG.info(
+                    "🚀 [FIX] Found {} finished splits waiting for acknowledgment: {}",
+                    finishedUnackedSplits.size(),
+                    finishedUnackedSplits.keySet());
+        }
 
         // notify split enumerator again about the finished unacked snapshot splits
         reportFinishedSnapshotSplitsIfNeed();
@@ -461,24 +527,33 @@ public class MySqlSourceReader<T>
                 "🔍 [DEBUG] reportFinishedSnapshotSplitsIfNeed called - finishedUnackedSplits size: {}",
                 finishedUnackedSplits.size());
         if (!finishedUnackedSplits.isEmpty()) {
+            LOG.info(
+                    "🚀 [FIX] Found {} finished splits to report to enumerator",
+                    finishedUnackedSplits.size());
+
             final Map<String, BinlogOffset> finishedOffsets = new HashMap<>();
             for (MySqlSnapshotSplit split : finishedUnackedSplits.values()) {
                 LOG.info(
-                        "🔍 [DEBUG] Adding finished snapshot split {} with highWatermark {}",
+                        "🚀 [FIX] Adding finished snapshot split {} with highWatermark {} to report event",
                         split.splitId(),
                         split.getHighWatermark());
                 finishedOffsets.put(split.splitId(), split.getHighWatermark());
             }
+
             FinishedSnapshotSplitsReportEvent reportEvent =
                     new FinishedSnapshotSplitsReportEvent(finishedOffsets);
             LOG.info(
-                    "🔍 [DEBUG] Sending FinishedSnapshotSplitsReportEvent with {} finished splits",
+                    "🚀 [FIX] Sending FinishedSnapshotSplitsReportEvent with {} finished splits to coordinator",
                     finishedOffsets.size());
+
             context.sendSourceEventToCoordinator(reportEvent);
             LOG.info(
-                    "Source reader {} reports offsets of finished snapshot splits {}.",
+                    "🚀 [FIX] Source reader {} successfully reported {} finished snapshot splits to enumerator: {}",
                     subtaskId,
-                    finishedOffsets);
+                    finishedOffsets.size(),
+                    finishedOffsets.keySet());
+        } else {
+            LOG.info("🔍 [DEBUG] No finished splits to report to enumerator");
         }
     }
 
@@ -617,6 +692,36 @@ public class MySqlSourceReader<T>
                             lastGroupStart, lastGroupStart + splitsNumOfLastGroup));
         }
         return new HashSet<>();
+    }
+
+    @Override
+    public void notifyCheckpointComplete(long checkpointId) {
+        LOG.info(
+                "🚀 [FIX] notifyCheckpointComplete called for checkpoint {} - finishedUnackedSplits size: {}",
+                checkpointId,
+                finishedUnackedSplits.size());
+
+        // After checkpoint recovery, re-report finished splits to enumerator
+        if (!finishedUnackedSplits.isEmpty()) {
+            LOG.info(
+                    "🚀 [FIX] CRITICAL: Re-reporting {} finished splits to enumerator after checkpoint {} completion",
+                    finishedUnackedSplits.size(),
+                    checkpointId);
+
+            // Log the splits being re-reported
+            for (MySqlSnapshotSplit split : finishedUnackedSplits.values()) {
+                LOG.info(
+                        "🚀 [FIX] CRITICAL: Re-reporting finished split {} with highWatermark {}",
+                        split.splitId(),
+                        split.getHighWatermark());
+            }
+
+            reportFinishedSnapshotSplitsIfNeed();
+        } else {
+            LOG.warn(
+                    "🚀 [FIX] PROBLEM: No finished splits to re-report after checkpoint {} completion - this might indicate the checkpoint didn't contain finished splits",
+                    checkpointId);
+        }
     }
 
     private void logCurrentBinlogOffsets(List<MySqlSplit> splits, long checkpointId) {
