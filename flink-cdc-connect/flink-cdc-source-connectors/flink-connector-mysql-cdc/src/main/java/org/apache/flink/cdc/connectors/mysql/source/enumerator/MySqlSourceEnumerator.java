@@ -119,7 +119,7 @@ public class MySqlSourceEnumerator implements SplitEnumerator<MySqlSplit, Pendin
 
     @Override
     public void addSplitsBack(List<MySqlSplit> splits, int subtaskId) {
-        LOG.debug("The enumerator adds splits back: {}", splits);
+        LOG.info("The enumerator adds splits back: {}", splits);
         Optional<MySqlSplit> binlogSplit =
                 splits.stream().filter(MySqlSplit::isBinlogSplit).findAny();
         if (binlogSplit.isPresent()) {
