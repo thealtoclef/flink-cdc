@@ -225,7 +225,6 @@ public class PostgresSourceBuilder<T> {
      * key column when read the snapshot of table.
      */
     public PostgresSourceBuilder<T> chunkKeyColumn(ObjectPath objectPath, String chunkKeyColumn) {
-        LOG.info("Setting chunk key column for table " + objectPath + " to " + chunkKeyColumn);
         this.configFactory.chunkKeyColumn(objectPath, chunkKeyColumn);
         return this;
     }
