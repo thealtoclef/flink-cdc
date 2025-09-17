@@ -500,7 +500,6 @@ public class MySqlSnapshotSplitAssigner implements MySqlSplitAssigner {
 
     @Override
     public void addSplits(Collection<MySqlSplit> splits) {
-        LOG.info("Adding splits {} to snapshot split assigner {}", splits);
         for (MySqlSplit split : splits) {
             tableSchemas.putAll(split.asSnapshotSplit().getTableSchemas());
             remainingSplits.add(split.asSnapshotSplit().toSchemalessSnapshotSplit());

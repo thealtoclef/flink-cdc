@@ -263,21 +263,9 @@ public class IncrementalSourceReader<T, C extends SourceConfig>
             if (split.isSnapshotSplit()) {
                 SnapshotSplit snapshotSplit = split.asSnapshotSplit();
                 if (dialect.isIncludeDataCollection(sourceConfig, snapshotSplit.getTableId())) {
-                    // Fix: Only mark as finished if high watermark is actually set
-                    // This prevents false positives during recovery when job restarts mid-chunk
-                    if (snapshotSplit.isSnapshotReadFinished()
-                            && snapshotSplit.getHighWatermark() != null) {
-                        LOG.info(
-                                "Source reader {} restoring finished snapshot split {} with high watermark {}",
-                                subtaskId,
-                                snapshotSplit.splitId(),
-                                snapshotSplit.getHighWatermark());
+                    if (snapshotSplit.isSnapshotReadFinished()) {
                         finishedUnackedSplits.put(snapshotSplit.splitId(), snapshotSplit);
                     } else {
-                        LOG.info(
-                                "Source reader {} restoring unfinished snapshot split {}",
-                                subtaskId,
-                                snapshotSplit.splitId());
                         unfinishedSplits.add(split);
                     }
                 } else {
@@ -329,9 +317,7 @@ public class IncrementalSourceReader<T, C extends SourceConfig>
                 context.sendSourceEventToCoordinator(new StreamSplitAssignedEvent());
             }
         }
-        // Fix: Notify split enumerator again about the finished unacked snapshot splits
-        // This ensures recovery works properly by re-reporting finished splits
-        LOG.info("Re-reporting finished splits during recovery for reader {}", subtaskId);
+        // notify split enumerator again about the finished unacked snapshot splits
         reportFinishedSnapshotSplitsIfNeed();
         // add all un-finished splits (including binlog split) to SourceReaderBase
         if (!unfinishedSplits.isEmpty()) {
