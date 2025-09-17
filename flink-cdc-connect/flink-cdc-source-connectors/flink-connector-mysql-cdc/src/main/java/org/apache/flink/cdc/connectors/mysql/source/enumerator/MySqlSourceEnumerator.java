@@ -202,6 +202,7 @@ public class MySqlSourceEnumerator implements SplitEnumerator<MySqlSplit, Pendin
 
     private void assignSplits() {
         final Iterator<Integer> awaitingReader = readersAwaitingSplit.iterator();
+        boolean hasAssignmentFailure = false;
 
         while (awaitingReader.hasNext()) {
             int nextAwaiting = awaitingReader.next();
@@ -230,12 +231,26 @@ public class MySqlSourceEnumerator implements SplitEnumerator<MySqlSplit, Pendin
                 }
                 awaitingReader.remove();
                 LOG.info("The enumerator assigns split {} to subtask {}", mySqlSplit, nextAwaiting);
+                hasAssignmentFailure = false; // Reset on successful assignment
             } else {
-                // there is no available splits by now, skip assigning
+                LOG.warn(
+                        "The enumerator has no more splits to assign to subtask {} by now. This may indicate a split generation timeout or all splits are exhausted.",
+                        nextAwaiting);
+                // Don't break immediately - try other readers first
+                hasAssignmentFailure = true;
                 requestBinlogSplitUpdateIfNeed();
-                break;
             }
         }
+
+        // If we had assignment failures and there are still readers waiting,
+        // schedule another assignment attempt to handle potential async split generation
+        if (hasAssignmentFailure && !readersAwaitingSplit.isEmpty()) {
+            LOG.info(
+                    "Some readers couldn't get splits due to temporary unavailability. Scheduling retry...");
+            // The async check interval will trigger another assignSplits() call
+        }
+
+        LOG.info("The enumerator finishes this round of assignment.");
     }
 
     private boolean shouldCloseIdleReader(int nextAwaiting) {

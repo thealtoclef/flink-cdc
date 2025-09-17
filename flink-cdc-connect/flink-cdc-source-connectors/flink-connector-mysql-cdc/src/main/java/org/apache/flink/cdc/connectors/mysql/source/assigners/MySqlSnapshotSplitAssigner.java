@@ -305,6 +305,7 @@ public class MySqlSnapshotSplitAssigner implements MySqlSplitAssigner {
     private void splitTable(TableId nextTable) {
         LOG.info("Start splitting table {} into chunks...", nextTable);
         long start = System.currentTimeMillis();
+        long lastProgressTime = System.currentTimeMillis();
         int chunkNum = 0;
         boolean hasRecordSchema = false;
         // split the given table into chunks (snapshot splits)
@@ -312,8 +313,24 @@ public class MySqlSnapshotSplitAssigner implements MySqlSplitAssigner {
             synchronized (lock) {
                 List<MySqlSnapshotSplit> splits;
                 try {
+                    // Add progress logging
+                    long now = System.currentTimeMillis();
+                    if (now - lastProgressTime > 60000L) { // Log every minute
+                        LOG.info(
+                                "Still splitting table {}, chunks generated so far: {}, elapsed time: {}ms",
+                                nextTable,
+                                chunkNum,
+                                now - start);
+                        lastProgressTime = now;
+                    }
+
                     splits = chunkSplitter.splitChunks(partition, nextTable);
                 } catch (Exception e) {
+                    LOG.error(
+                            "Error when splitting chunks for table {}: {}",
+                            nextTable,
+                            e.getMessage(),
+                            e);
                     throw new IllegalStateException(
                             "Error when splitting chunks for " + nextTable, e);
                 }
@@ -367,13 +384,63 @@ public class MySqlSnapshotSplitAssigner implements MySqlSplitAssigner {
                         split.toMySqlSnapshotSplit(tableSchemas.get(split.getTableId())));
             } else if (!remainingTables.isEmpty()) {
                 try {
-                    // wait for the asynchronous split to complete
-                    lock.wait();
+                    // wait for the asynchronous split to complete with timeout
+                    final long timeout = 30000L; // 30 seconds timeout
+                    lock.wait(timeout);
+
+                    // Check if we timed out and still have no splits
+                    if (remainingSplits.isEmpty() && !remainingTables.isEmpty()) {
+                        LOG.warn(
+                                "Timeout waiting for asynchronous split generation, remaining tables: {}",
+                                remainingTables);
+                        // Try to restart the splitting process
+                        startAsynchronouslySplit();
+                        // Wait again with shorter timeout
+                        lock.wait(5000L);
+
+                        // After restart and wait, check again for splits
+                        if (!remainingSplits.isEmpty()) {
+                            // Splits are now available after restart
+                            Iterator<MySqlSchemalessSnapshotSplit> iterator =
+                                    remainingSplits.iterator();
+                            MySqlSchemalessSnapshotSplit split = iterator.next();
+                            remainingSplits.remove(split);
+                            assignedSplits.put(split.splitId(), split);
+                            addAlreadyProcessedTablesIfNotExists(split.getTableId());
+                            return Optional.of(
+                                    split.toMySqlSnapshotSplit(
+                                            tableSchemas.get(split.getTableId())));
+                        } else if (!remainingTables.isEmpty()) {
+                            // Still no splits after restart, but we have tables - recurse normally
+                            return getNext();
+                        } else {
+                            // No tables left after restart
+                            closeExecutorService();
+                            return Optional.empty();
+                        }
+                    }
+                    // If we didn't timeout (normal case), check if splits are available now
+                    if (!remainingSplits.isEmpty()) {
+                        Iterator<MySqlSchemalessSnapshotSplit> iterator =
+                                remainingSplits.iterator();
+                        MySqlSchemalessSnapshotSplit split = iterator.next();
+                        remainingSplits.remove(split);
+                        assignedSplits.put(split.splitId(), split);
+                        addAlreadyProcessedTablesIfNotExists(split.getTableId());
+                        return Optional.of(
+                                split.toMySqlSnapshotSplit(tableSchemas.get(split.getTableId())));
+                    } else if (!remainingTables.isEmpty()) {
+                        // No splits yet but still have tables to process - recurse
+                        return getNext();
+                    } else {
+                        // No tables left
+                        closeExecutorService();
+                        return Optional.empty();
+                    }
                 } catch (InterruptedException e) {
                     throw new FlinkRuntimeException(
                             "InterruptedException while waiting for asynchronously snapshot split");
                 }
-                return getNext();
             } else {
                 closeExecutorService();
                 return Optional.empty();
