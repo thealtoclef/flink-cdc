@@ -24,6 +24,7 @@ import org.apache.flink.cdc.connectors.db2.source.config.Db2SourceConfigFactory;
 import org.apache.flink.cdc.connectors.db2.source.dialect.Db2Dialect;
 import org.apache.flink.cdc.connectors.db2.source.offset.LsnFactory;
 import org.apache.flink.cdc.debezium.DebeziumDeserializationSchema;
+import org.apache.flink.table.catalog.ObjectPath;
 
 import java.time.Duration;
 import java.util.Properties;
@@ -180,8 +181,8 @@ public class Db2SourceBuilder<T> {
      * The chunk key of table snapshot, captured tables are split into multiple chunks by the chunk
      * key column when read the snapshot of table.
      */
-    public Db2SourceBuilder<T> chunkKeyColumn(String chunkKeyColumn) {
-        this.configFactory.chunkKeyColumn(chunkKeyColumn);
+    public Db2SourceBuilder<T> chunkKeyColumn(ObjectPath objectPath, String chunkKeyColumn) {
+        this.configFactory.chunkKeyColumn(objectPath, chunkKeyColumn);
         return this;
     }
 

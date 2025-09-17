@@ -19,12 +19,14 @@ package org.apache.flink.cdc.connectors.db2.source.config;
 
 import org.apache.flink.cdc.connectors.base.config.JdbcSourceConfig;
 import org.apache.flink.cdc.connectors.base.options.StartupOptions;
+import org.apache.flink.table.catalog.ObjectPath;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.db2.Db2ConnectorConfig;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 /**
@@ -55,7 +57,7 @@ public class Db2SourceConfig extends JdbcSourceConfig {
             Duration connectTimeout,
             int connectMaxRetries,
             int connectionPoolSize,
-            String chunkKeyColumn,
+            Map<ObjectPath, String> chunkKeyColumns,
             boolean skipSnapshotBackfill,
             boolean assignUnboundedChunkFirst) {
         super(
@@ -81,7 +83,7 @@ public class Db2SourceConfig extends JdbcSourceConfig {
                 connectTimeout,
                 connectMaxRetries,
                 connectionPoolSize,
-                chunkKeyColumn,
+                chunkKeyColumns,
                 skipSnapshotBackfill,
                 false,
                 assignUnboundedChunkFirst);

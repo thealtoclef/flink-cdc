@@ -124,6 +124,7 @@ public class PostgresSourceFetchTaskContext extends JdbcSourceFetchTaskContext {
         LOG.debug("Configuring PostgresSourceFetchTaskContext for split: {}", sourceSplitBase);
         PostgresConnectorConfig dbzConfig = getDbzConnectorConfig();
         if (sourceSplitBase instanceof SnapshotSplit) {
+            SnapshotSplit snapshotSplit = (SnapshotSplit) sourceSplitBase;
             dbzConfig =
                     new PostgresConnectorConfig(
                             dbzConfig
@@ -131,9 +132,7 @@ public class PostgresSourceFetchTaskContext extends JdbcSourceFetchTaskContext {
                                     .edit()
                                     .with(
                                             "table.include.list",
-                                            ((SnapshotSplit) sourceSplitBase)
-                                                    .getTableId()
-                                                    .toString())
+                                            snapshotSplit.getTableId().toString())
                                     .with(
                                             SLOT_NAME.name(),
                                             ((PostgresSourceConfig) sourceConfig)
@@ -143,6 +142,16 @@ public class PostgresSourceFetchTaskContext extends JdbcSourceFetchTaskContext {
                                     // Disable heartbeat event in snapshot split fetcher
                                     .with(Heartbeat.HEARTBEAT_INTERVAL, 0)
                                     .build());
+
+            // Set snapshot filter for the scan task
+            String snapshotFilter = ((PostgresSourceConfig) sourceConfig).getSnapshotFilter();
+            if (snapshotFilter != null && !snapshotFilter.trim().isEmpty()) {
+                PostgresScanFetchTask.setSnapshotFilter(snapshotFilter);
+                LOG.info(
+                        "Applied snapshot filter for table {}: {}",
+                        snapshotSplit.getTableId(),
+                        snapshotFilter);
+            }
         } else {
             dbzConfig =
                     new PostgresConnectorConfig(
@@ -330,6 +339,8 @@ public class PostgresSourceFetchTaskContext extends JdbcSourceFetchTaskContext {
 
     @Override
     public void close() throws Exception {
+        // Clear the snapshot filter for this thread
+        PostgresScanFetchTask.clearSnapshotFilter();
         if (jdbcConnection != null) {
             jdbcConnection.close();
         }

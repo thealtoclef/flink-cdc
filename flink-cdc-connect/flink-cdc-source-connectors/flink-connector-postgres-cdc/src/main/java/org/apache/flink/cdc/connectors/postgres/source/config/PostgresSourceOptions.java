@@ -87,4 +87,14 @@ public class PostgresSourceOptions extends JdbcSourceOptions {
                                     + "By setting this to higher value, the offset that is consumed by global slot will be "
                                     + "committed after multiple checkpoint delays instead of after each checkpoint completion.\n"
                                     + "This allows continuous recycle of log files in stream phase.");
+
+    public static final ConfigOption<String> SCAN_INCREMENTAL_SNAPSHOT_FILTER =
+            ConfigOptions.key("scan.incremental.snapshot.filter")
+                    .stringType()
+                    .noDefaultValue()
+                    .withDescription(
+                            "Table-specific filter conditions for snapshot phase. "
+                                    + "Format: 'schema.table1:condition1;schema.table2:condition2'. "
+                                    + "Example: 'public.users:created_at > ''2024-01-01'';public.orders:status = ''active''. "
+                                    + "The filter condition will be appended as a WHERE clause during snapshot phase queries.");
 }

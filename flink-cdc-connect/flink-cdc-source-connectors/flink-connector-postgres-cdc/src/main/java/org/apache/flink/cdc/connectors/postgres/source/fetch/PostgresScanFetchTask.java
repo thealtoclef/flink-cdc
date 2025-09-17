@@ -50,11 +50,17 @@ import io.debezium.util.Threads;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
+
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static io.debezium.connector.postgresql.PostgresObjectUtils.waitForReplicationSlotReady;
@@ -64,6 +70,53 @@ import static io.debezium.connector.postgresql.Utils.refreshSchema;
 public class PostgresScanFetchTask extends AbstractScanFetchTask {
 
     private static final Logger LOG = LoggerFactory.getLogger(PostgresScanFetchTask.class);
+
+    /** Pattern to parse table-specific filters: schema.table:condition. */
+    private static final Pattern FILTER_PATTERN = Pattern.compile("([^:;]+)\\.([^:;]+):([^:;]+)");
+
+    /** Snapshot filter map per source configuration, uses ThreadLocal for isolation. */
+    private static final ThreadLocal<Map<String, String>> SNAPSHOT_FILTERS =
+            ThreadLocal.withInitial(HashMap::new);
+
+    /**
+     * Set the snapshot filter configuration for the current thread. Format:
+     * "schema.table1:condition1;schema.table2:condition2"
+     *
+     * @param snapshotFilter The filter string
+     */
+    public static void setSnapshotFilter(String snapshotFilter) {
+        Map<String, String> filterMap = SNAPSHOT_FILTERS.get();
+        filterMap.clear();
+        if (snapshotFilter != null && !snapshotFilter.trim().isEmpty()) {
+            String[] tableFilters = snapshotFilter.split(";");
+            for (String tableFilter : tableFilters) {
+                Matcher matcher = FILTER_PATTERN.matcher(tableFilter.trim());
+                if (matcher.find()) {
+                    String schema = matcher.group(1).trim();
+                    String table = matcher.group(2).trim();
+                    String condition = matcher.group(3).trim();
+                    filterMap.put(schema + "." + table, condition);
+                }
+            }
+        }
+    }
+
+    /** Clear the snapshot filter configuration for the current thread. */
+    public static void clearSnapshotFilter() {
+        SNAPSHOT_FILTERS.get().clear();
+        SNAPSHOT_FILTERS.remove();
+    }
+
+    /**
+     * Get the filter condition for a specific table.
+     *
+     * @param tableId the table identifier
+     * @return the filter condition, or null if no filter is configured for this table
+     */
+    @Nullable
+    private static String getFilterConditionForTable(TableId tableId) {
+        return SNAPSHOT_FILTERS.get().get(tableId.schema() + "." + tableId.table());
+    }
 
     public PostgresScanFetchTask(SnapshotSplit split) {
         super(split);
@@ -287,13 +340,17 @@ public class PostgresScanFetchTask extends AbstractScanFetchTask {
                             .filter(field -> table.columnWithName(field).typeName().equals("uuid"))
                             .collect(Collectors.toList());
 
+            // Get filter condition for the table
+            String filterCondition = getFilterConditionForTable(snapshotSplit.getTableId());
+
             final String selectSql =
                     PostgresQueryUtils.buildSplitScanQuery(
                             snapshotSplit.getTableId(),
                             snapshotSplit.getSplitKeyType(),
                             snapshotSplit.getSplitStart() == null,
                             snapshotSplit.getSplitEnd() == null,
-                            uuidFields);
+                            uuidFields,
+                            filterCondition);
             LOG.debug(
                     "For split '{}' of table {} using select statement: '{}'",
                     snapshotSplit.splitId(),

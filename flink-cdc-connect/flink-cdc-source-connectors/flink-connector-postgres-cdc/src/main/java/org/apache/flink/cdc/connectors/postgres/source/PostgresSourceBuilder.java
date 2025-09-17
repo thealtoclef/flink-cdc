@@ -225,7 +225,6 @@ public class PostgresSourceBuilder<T> {
      * key column when read the snapshot of table.
      */
     public PostgresSourceBuilder<T> chunkKeyColumn(ObjectPath objectPath, String chunkKeyColumn) {
-        LOG.info("Setting chunk key column for table " + objectPath + " to " + chunkKeyColumn);
         this.configFactory.chunkKeyColumn(objectPath, chunkKeyColumn);
         return this;
     }
@@ -302,6 +301,20 @@ public class PostgresSourceBuilder<T> {
     /** Set the {@code LSN} checkpoints delay number for Postgres to commit the offsets. */
     public PostgresSourceBuilder<T> lsnCommitCheckpointsDelay(int lsnCommitDelay) {
         this.configFactory.setLsnCommitCheckpointsDelay(lsnCommitDelay);
+        return this;
+    }
+
+    /**
+     * Table-specific filter conditions for snapshot phase. Format:
+     * 'schema.table1:condition1;schema.table2:condition2'.
+     *
+     * <p>Example: 'public.users:created_at &gt; ''2024-01-01'';public.orders:status = ''active'''
+     *
+     * @param snapshotFilter The filter string with table-specific conditions
+     * @return this builder
+     */
+    public PostgresSourceBuilder<T> snapshotFilter(String snapshotFilter) {
+        this.configFactory.snapshotFilter(snapshotFilter);
         return this;
     }
 

@@ -57,6 +57,8 @@ public class PostgresSourceConfigFactory extends JdbcSourceConfigFactory {
 
     private Map<ObjectPath, String> chunkKeyColumns = new HashMap<>();
 
+    private String snapshotFilter;
+
     /** Creates a new {@link PostgresSourceConfig} for the given subtask {@code subtaskId}. */
     @Override
     public PostgresSourceConfig create(int subtaskId) {
@@ -139,7 +141,8 @@ public class PostgresSourceConfigFactory extends JdbcSourceConfigFactory {
                 skipSnapshotBackfill,
                 scanNewlyAddedTableEnabled,
                 lsnCommitCheckpointsDelay,
-                assignUnboundedChunkFirst);
+                assignUnboundedChunkFirst,
+                snapshotFilter);
     }
 
     /**
@@ -186,6 +189,18 @@ public class PostgresSourceConfigFactory extends JdbcSourceConfigFactory {
     /** The lsn commit checkpoints delay for Postgres. */
     public void setLsnCommitCheckpointsDelay(int lsnCommitCheckpointsDelay) {
         this.lsnCommitCheckpointsDelay = lsnCommitCheckpointsDelay;
+    }
+
+    /**
+     * Table-specific filter conditions for snapshot phase.
+     *
+     * @param snapshotFilter The filter string in format
+     *     "schema.table1:condition1;schema.table2:condition2"
+     * @return this factory
+     */
+    public PostgresSourceConfigFactory snapshotFilter(String snapshotFilter) {
+        this.snapshotFilter = snapshotFilter;
+        return this;
     }
 
     /**

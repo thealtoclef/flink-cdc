@@ -44,10 +44,30 @@ public class PostgresQueryUtils {
 
     public static Object[] queryMinMax(JdbcConnection jdbc, TableId tableId, Column column)
             throws SQLException {
+        return queryMinMax(jdbc, tableId, column, null);
+    }
+
+    /**
+     * Query the maximum and minimum value of the column in the table with an optional filter
+     * condition.
+     *
+     * @param jdbc JDBC connection.
+     * @param tableId table identity.
+     * @param column split column.
+     * @param filterCondition optional WHERE clause condition (without the "WHERE" keyword).
+     * @return maximum and minimum value.
+     */
+    public static Object[] queryMinMax(
+            JdbcConnection jdbc, TableId tableId, Column column, String filterCondition)
+            throws SQLException {
+        String fromClause = "FROM " + quote(tableId);
+        if (filterCondition != null && !filterCondition.trim().isEmpty()) {
+            fromClause += " WHERE " + filterCondition;
+        }
         final String minMaxQuery =
                 String.format(
-                        "SELECT MIN(%s), MAX(%s) FROM %s",
-                        quoteForMinMax(column), quoteForMinMax(column), quote(tableId));
+                        "SELECT MIN(%s), MAX(%s) %s",
+                        quoteForMinMax(column), quoteForMinMax(column), fromClause);
         return jdbc.queryAndMap(
                 minMaxQuery,
                 rs -> {
@@ -123,17 +143,42 @@ public class PostgresQueryUtils {
             int chunkSize,
             Object includedLowerBound)
             throws SQLException {
+        return queryNextChunkMax(jdbc, tableId, splitColumn, chunkSize, includedLowerBound, null);
+    }
+
+    /**
+     * Query the maximum value for the next chunk with an optional filter condition.
+     *
+     * @param jdbc JDBC connection.
+     * @param tableId table identity.
+     * @param splitColumn split column.
+     * @param chunkSize chunk size.
+     * @param includedLowerBound the lower bound value (inclusive).
+     * @param filterCondition optional additional WHERE clause condition.
+     * @return next chunk end value.
+     */
+    public static Object queryNextChunkMax(
+            JdbcConnection jdbc,
+            TableId tableId,
+            Column splitColumn,
+            int chunkSize,
+            Object includedLowerBound,
+            String filterCondition)
+            throws SQLException {
         String quotedColumn = quote(splitColumn.name());
+        String whereClause = String.format("%s >= %s", quotedColumn, castParam(splitColumn));
+        if (filterCondition != null && !filterCondition.trim().isEmpty()) {
+            whereClause = "(" + filterCondition + ") AND " + whereClause;
+        }
         String query =
                 String.format(
                         "SELECT MAX(%s) FROM ("
-                                + "SELECT %s FROM %s WHERE %s >= %s ORDER BY %s ASC LIMIT %s"
+                                + "SELECT %s FROM %s WHERE %s ORDER BY %s ASC LIMIT %s"
                                 + ") AS T",
                         quoteForMinMax(splitColumn),
                         quotedColumn,
                         quote(tableId),
-                        quotedColumn,
-                        castParam(splitColumn),
+                        whereClause,
                         quotedColumn,
                         chunkSize);
         return jdbc.prepareQueryAndMap(
@@ -156,7 +201,36 @@ public class PostgresQueryUtils {
             boolean isFirstSplit,
             boolean isLastSplit,
             List<String> uuidFields) {
-        return buildSplitQuery(tableId, pkRowType, isFirstSplit, isLastSplit, uuidFields, -1, true);
+        return buildSplitScanQuery(tableId, pkRowType, isFirstSplit, isLastSplit, uuidFields, null);
+    }
+
+    /**
+     * Build the split scan query with an optional filter condition.
+     *
+     * @param tableId table identity
+     * @param pkRowType primary key row type
+     * @param isFirstSplit whether this is the first split
+     * @param isLastSplit whether this is the last split
+     * @param uuidFields list of UUID field names
+     * @param filterCondition optional additional WHERE clause condition
+     * @return the SQL query string
+     */
+    public static String buildSplitScanQuery(
+            TableId tableId,
+            RowType pkRowType,
+            boolean isFirstSplit,
+            boolean isLastSplit,
+            List<String> uuidFields,
+            String filterCondition) {
+        return buildSplitQuery(
+                tableId,
+                pkRowType,
+                isFirstSplit,
+                isLastSplit,
+                uuidFields,
+                -1,
+                true,
+                filterCondition);
     }
 
     private static String buildSplitQuery(
@@ -167,10 +241,31 @@ public class PostgresQueryUtils {
             List<String> uuidFields,
             int limitSize,
             boolean isScanningData) {
+        return buildSplitQuery(
+                tableId,
+                pkRowType,
+                isFirstSplit,
+                isLastSplit,
+                uuidFields,
+                limitSize,
+                isScanningData,
+                null);
+    }
+
+    private static String buildSplitQuery(
+            TableId tableId,
+            RowType pkRowType,
+            boolean isFirstSplit,
+            boolean isLastSplit,
+            List<String> uuidFields,
+            int limitSize,
+            boolean isScanningData,
+            String filterCondition) {
         final String condition;
 
         if (isFirstSplit && isLastSplit) {
-            condition = null;
+            // For single split, start with empty condition
+            condition = "";
         } else if (isFirstSplit) {
             final StringBuilder sql = new StringBuilder();
             addPrimaryKeyColumnsToCondition(pkRowType, sql, " <= ", uuidFields);
@@ -197,9 +292,25 @@ public class PostgresQueryUtils {
             condition = sql.toString();
         }
 
+        // Combine filter condition with the existing condition
+        String finalCondition;
+        if (filterCondition != null && !filterCondition.trim().isEmpty()) {
+            if (condition.isEmpty()) {
+                finalCondition = filterCondition;
+            } else {
+                finalCondition = "(" + filterCondition + ") AND (" + condition + ")";
+            }
+        } else {
+            finalCondition = condition;
+        }
+
         if (isScanningData) {
             return buildSelectWithRowLimits(
-                    tableId, limitSize, "*", Optional.ofNullable(condition), Optional.empty());
+                    tableId,
+                    limitSize,
+                    "*",
+                    finalCondition.isEmpty() ? Optional.empty() : Optional.of(finalCondition),
+                    Optional.empty());
         } else {
             final String orderBy =
                     pkRowType.getFieldNames().stream().collect(Collectors.joining(", "));
@@ -208,7 +319,7 @@ public class PostgresQueryUtils {
                     limitSize,
                     getPrimaryKeyColumnsProjection(pkRowType),
                     getMaxPrimaryKeyColumnsProjection(pkRowType),
-                    Optional.ofNullable(condition),
+                    finalCondition.isEmpty() ? Optional.empty() : Optional.of(finalCondition),
                     orderBy);
         }
     }

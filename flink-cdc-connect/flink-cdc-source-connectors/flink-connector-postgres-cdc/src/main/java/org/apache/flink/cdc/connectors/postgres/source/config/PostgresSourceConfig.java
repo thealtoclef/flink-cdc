@@ -40,6 +40,7 @@ public class PostgresSourceConfig extends JdbcSourceConfig {
 
     private final int subtaskId;
     private final int lsnCommitCheckpointsDelay;
+    private final String snapshotFilter;
 
     public PostgresSourceConfig(
             int subtaskId,
@@ -69,7 +70,8 @@ public class PostgresSourceConfig extends JdbcSourceConfig {
             boolean skipSnapshotBackfill,
             boolean isScanNewlyAddedTableEnabled,
             int lsnCommitCheckpointsDelay,
-            boolean assignUnboundedChunkFirst) {
+            boolean assignUnboundedChunkFirst,
+            @Nullable String snapshotFilter) {
 
         super(
                 startupOptions,
@@ -101,6 +103,7 @@ public class PostgresSourceConfig extends JdbcSourceConfig {
 
         this.subtaskId = subtaskId;
         this.lsnCommitCheckpointsDelay = lsnCommitCheckpointsDelay;
+        this.snapshotFilter = snapshotFilter;
     }
 
     /**
@@ -143,5 +146,15 @@ public class PostgresSourceConfig extends JdbcSourceConfig {
     @Override
     public PostgresConnectorConfig getDbzConnectorConfig() {
         return new PostgresConnectorConfig(getDbzConfiguration());
+    }
+
+    /**
+     * Returns the snapshot filter string.
+     *
+     * @return snapshot filter string in format "schema.table1:condition1;schema.table2:condition2"
+     */
+    @Nullable
+    public String getSnapshotFilter() {
+        return snapshotFilter;
     }
 }
