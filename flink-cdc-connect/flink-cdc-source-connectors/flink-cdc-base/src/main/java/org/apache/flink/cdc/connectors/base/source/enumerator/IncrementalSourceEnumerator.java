@@ -261,12 +261,11 @@ public class IncrementalSourceEnumerator
         // IncrementalSourceEnumerator and JdbcIncrementalSourceReader, it may missed some
         // notification
         // event.
-        // tell all JdbcIncrementalSourceReader(s) to report there finished but unacked splits.
-        if (splitAssigner.waitingForFinishedSplits()) {
-            for (int subtaskId : subtaskIds) {
-                context.sendEventToSourceReader(
-                        subtaskId, new FinishedSnapshotSplitsRequestEvent());
-            }
+        // Fix: Always request finished splits report during recovery to ensure state consistency
+        // This handles cases where job restarts during snapshot phase and ensures proper recovery
+        LOG.info("Syncing with readers after recovery, requesting finished splits report");
+        for (int subtaskId : subtaskIds) {
+            context.sendEventToSourceReader(subtaskId, new FinishedSnapshotSplitsRequestEvent());
         }
 
         requestStreamSplitUpdateIfNeed();
