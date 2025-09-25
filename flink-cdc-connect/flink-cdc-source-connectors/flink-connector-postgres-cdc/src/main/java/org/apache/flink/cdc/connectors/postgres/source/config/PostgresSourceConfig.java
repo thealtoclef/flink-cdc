@@ -127,7 +127,7 @@ public class PostgresSourceConfig extends JdbcSourceConfig {
         return chunkKeyColumns;
     }
 
-    /**
+  /**
      * Returns {@code includePartitionedTables} value.
      *
      * @return include partitioned table
@@ -135,7 +135,6 @@ public class PostgresSourceConfig extends JdbcSourceConfig {
     public boolean includePartitionedTables() {
         return includePartitionedTables;
     }
-
     /**
      * Returns the slot name for backfill task.
      *
