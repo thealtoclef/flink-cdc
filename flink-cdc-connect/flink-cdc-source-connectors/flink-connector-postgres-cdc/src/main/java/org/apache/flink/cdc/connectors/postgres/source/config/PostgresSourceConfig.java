@@ -40,6 +40,7 @@ public class PostgresSourceConfig extends JdbcSourceConfig {
 
     private final int subtaskId;
     private final int lsnCommitCheckpointsDelay;
+    private final boolean includePartitionedTables;
 
     public PostgresSourceConfig(
             int subtaskId,
@@ -69,8 +70,8 @@ public class PostgresSourceConfig extends JdbcSourceConfig {
             boolean skipSnapshotBackfill,
             boolean isScanNewlyAddedTableEnabled,
             int lsnCommitCheckpointsDelay,
-            boolean assignUnboundedChunkFirst) {
-
+            boolean assignUnboundedChunkFirst,
+            boolean includePartitionedTables) {
         super(
                 startupOptions,
                 databaseList,
@@ -101,6 +102,7 @@ public class PostgresSourceConfig extends JdbcSourceConfig {
 
         this.subtaskId = subtaskId;
         this.lsnCommitCheckpointsDelay = lsnCommitCheckpointsDelay;
+        this.includePartitionedTables = includePartitionedTables;
     }
 
     /**
@@ -123,6 +125,15 @@ public class PostgresSourceConfig extends JdbcSourceConfig {
 
     public Map<ObjectPath, String> getChunkKeyColumns() {
         return chunkKeyColumns;
+    }
+
+    /**
+     * Returns {@code includePartitionedTables} value.
+     *
+     * @return include partitioned table
+     */
+    public boolean includePartitionedTables() {
+        return includePartitionedTables;
     }
 
     /**

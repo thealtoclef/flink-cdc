@@ -56,6 +56,8 @@ public class PostgresSourceConfigFactory extends JdbcSourceConfigFactory {
     private int lsnCommitCheckpointsDelay;
 
     private Map<ObjectPath, String> chunkKeyColumns = new HashMap<>();
+  
+    private boolean includePartitionedTables;
 
     /** Creates a new {@link PostgresSourceConfig} for the given subtask {@code subtaskId}. */
     @Override
@@ -139,7 +141,8 @@ public class PostgresSourceConfigFactory extends JdbcSourceConfigFactory {
                 skipSnapshotBackfill,
                 scanNewlyAddedTableEnabled,
                 lsnCommitCheckpointsDelay,
-                assignUnboundedChunkFirst);
+                assignUnboundedChunkFirst,
+                includePartitionedTables);
     }
 
     /**
@@ -201,5 +204,8 @@ public class PostgresSourceConfigFactory extends JdbcSourceConfigFactory {
     public PostgresSourceConfigFactory chunkKeyColumn(Map<ObjectPath, String> chunkKeyColumns) {
         this.chunkKeyColumns.putAll(chunkKeyColumns);
         return this;
+    /** Enable include partitioned table. */
+    public void setIncludePartitionedTables(boolean includePartitionedTables) {
+        this.includePartitionedTables = includePartitionedTables;
     }
 }
