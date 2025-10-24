@@ -313,6 +313,10 @@ public class MySqlSnapshotSplitAssigner implements MySqlSplitAssigner {
                 List<MySqlSnapshotSplit> splits;
                 try {
                     splits = chunkSplitter.splitChunks(partition, nextTable);
+                    LOG.info(
+                            "ChunkSplitter returned {} splits for table {}",
+                            splits.size(),
+                            nextTable);
                 } catch (Exception e) {
                     throw new IllegalStateException(
                             "Error when splitting chunks for " + nextTable, e);
@@ -339,6 +343,7 @@ public class MySqlSnapshotSplitAssigner implements MySqlSplitAssigner {
                 chunkNum += splits.size();
                 if (!chunkSplitter.hasNextChunk()) {
                     remainingTables.remove(nextTable);
+                    LOG.info("Completed splitting table {}, total chunks: {}", nextTable, chunkNum);
                 }
                 lock.notify();
             }

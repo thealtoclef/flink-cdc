@@ -154,6 +154,15 @@ public class MySqlChunkSplitter implements ChunkSplitter {
             minMaxOfSplitColumn =
                     StatementUtils.queryMinMax(jdbcConnection, tableId, splitColumn.name());
             approximateRowCnt = StatementUtils.queryApproximateRowCnt(jdbcConnection, tableId);
+
+            LOG.info(
+                    "Table analysis for {}: splitColumn={}, min={}, max={}, approximateRowCount={}, chunkSize={}",
+                    tableId,
+                    splitColumn.name(),
+                    minMaxOfSplitColumn[0],
+                    minMaxOfSplitColumn[1],
+                    approximateRowCnt,
+                    sourceConfig.getSplitSize());
         } catch (Exception e) {
             throw new RuntimeException("Fail to analyze table in chunk splitter.", e);
         }
@@ -260,6 +269,11 @@ public class MySqlChunkSplitter implements ChunkSplitter {
                             chunk.getChunkEnd());
             splits.add(split);
         }
+        LOG.info(
+                "Generated {} snapshot splits for table {} from {} chunk ranges",
+                splits.size(),
+                tableId,
+                chunks.size());
         return splits;
     }
 

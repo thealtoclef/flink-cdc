@@ -38,6 +38,7 @@ import org.apache.flink.cdc.connectors.mysql.source.assigners.state.BinlogPendin
 import org.apache.flink.cdc.connectors.mysql.source.assigners.state.HybridPendingSplitsState;
 import org.apache.flink.cdc.connectors.mysql.source.assigners.state.PendingSplitsState;
 import org.apache.flink.cdc.connectors.mysql.source.assigners.state.PendingSplitsStateSerializer;
+import org.apache.flink.cdc.connectors.mysql.source.assigners.state.SnapshotPendingSplitsState;
 import org.apache.flink.cdc.connectors.mysql.source.config.MySqlSourceConfig;
 import org.apache.flink.cdc.connectors.mysql.source.config.MySqlSourceConfigFactory;
 import org.apache.flink.cdc.connectors.mysql.source.enumerator.MySqlSourceEnumerator;
@@ -59,6 +60,8 @@ import org.apache.flink.metrics.MetricGroup;
 import org.apache.flink.util.FlinkRuntimeException;
 
 import io.debezium.jdbc.JdbcConnection;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.lang.reflect.Method;
@@ -98,6 +101,7 @@ public class MySqlSource<T>
         implements Source<T, MySqlSplit, PendingSplitsState>, ResultTypeQueryable<T> {
 
     private static final long serialVersionUID = 1L;
+    private static final Logger LOG = LoggerFactory.getLogger(MySqlSource.class);
 
     private static final String ENUMERATOR_SERVER_NAME = "mysql_source_split_enumerator";
 
@@ -243,22 +247,74 @@ public class MySqlSource<T>
 
         MySqlSourceConfig sourceConfig = configFactory.createConfig(0, ENUMERATOR_SERVER_NAME);
 
+        // Log checkpoint restoration
+        LOG.info(
+                "Restoring MySQL CDC enumerator from checkpoint type: {}",
+                checkpoint.getClass().getSimpleName());
+
         final MySqlSplitAssigner splitAssigner;
         if (checkpoint instanceof HybridPendingSplitsState) {
+            HybridPendingSplitsState hybridState = (HybridPendingSplitsState) checkpoint;
+            SnapshotPendingSplitsState snapshotState = hybridState.getSnapshotPendingSplits();
+            LOG.info(
+                    "Restoring from HybridPendingSplitsState - Snapshot remaining splits: {}, Assigned splits: {}, Binlog assigned: {}",
+                    snapshotState.getRemainingSplits() != null
+                            ? snapshotState.getRemainingSplits().size()
+                            : 0,
+                    snapshotState.getAssignedSplits() != null
+                            ? snapshotState.getAssignedSplits().size()
+                            : 0,
+                    hybridState.isBinlogSplitAssigned());
             splitAssigner =
                     new MySqlHybridSplitAssigner(
                             sourceConfig,
                             enumContext.currentParallelism(),
-                            (HybridPendingSplitsState) checkpoint,
+                            hybridState,
                             enumContext);
-        } else if (checkpoint instanceof BinlogPendingSplitsState) {
+            LOG.info("Created MySqlHybridSplitAssigner for restored hybrid state");
+        } else if (checkpoint instanceof SnapshotPendingSplitsState) {
+            SnapshotPendingSplitsState snapshotState = (SnapshotPendingSplitsState) checkpoint;
+            LOG.info(
+                    "Restoring from SnapshotPendingSplitsState - Remaining tables: {}, Remaining splits: {}, Assigned splits: {}, Finished splits: {}, Status: {}",
+                    snapshotState.getRemainingTables() != null
+                            ? snapshotState.getRemainingTables().size()
+                            : 0,
+                    snapshotState.getRemainingSplits() != null
+                            ? snapshotState.getRemainingSplits().size()
+                            : 0,
+                    snapshotState.getAssignedSplits() != null
+                            ? snapshotState.getAssignedSplits().size()
+                            : 0,
+                    snapshotState.getSplitFinishedOffsets() != null
+                            ? snapshotState.getSplitFinishedOffsets().size()
+                            : 0,
+                    snapshotState.getSnapshotAssignerStatus());
             splitAssigner =
-                    new MySqlBinlogSplitAssigner(
-                            sourceConfig, (BinlogPendingSplitsState) checkpoint);
+                    new MySqlSnapshotSplitAssigner(
+                            sourceConfig,
+                            enumContext.currentParallelism(),
+                            snapshotState,
+                            enumContext);
+            LOG.info("Created MySqlSnapshotSplitAssigner for restored snapshot state");
+        } else if (checkpoint instanceof BinlogPendingSplitsState) {
+            BinlogPendingSplitsState binlogState = (BinlogPendingSplitsState) checkpoint;
+            LOG.info(
+                    "Restoring from BinlogPendingSplitsState - Binlog split assigned: {}",
+                    binlogState.isBinlogSplitAssigned());
+            splitAssigner = new MySqlBinlogSplitAssigner(sourceConfig, binlogState);
+            LOG.info("Created MySqlBinlogSplitAssigner for restored binlog state");
         } else {
+            LOG.error(
+                    "Unsupported checkpoint type during restoration: {}",
+                    checkpoint.getClass().getName());
             throw new UnsupportedOperationException(
                     "Unsupported restored PendingSplitsState: " + checkpoint);
         }
+
+        LOG.info(
+                "Successfully restored MySQL source enumerator with split assigner: {}",
+                splitAssigner.getClass().getSimpleName());
+
         return new MySqlSourceEnumerator(
                 enumContext, sourceConfig, splitAssigner, getBoundedness());
     }

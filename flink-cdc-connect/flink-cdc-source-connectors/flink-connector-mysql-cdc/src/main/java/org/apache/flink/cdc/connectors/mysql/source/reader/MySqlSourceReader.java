@@ -147,6 +147,20 @@ public class MySqlSourceReader<T>
             unfinishedSplits.add(suspendedBinlogSplit);
         }
 
+        // Log checkpoint details
+        LOG.info(
+                "Source reader {} snapshotting state for checkpoint {} - total splits: {}, unfinished: {}, finishedUnacked: {}, uncompletedBinlog: {}, suspended: {}",
+                subtaskId,
+                checkpointId,
+                unfinishedSplits.size(),
+                unfinishedSplits.size()
+                        - finishedUnackedSplits.size()
+                        - uncompletedBinlogSplits.size()
+                        - (suspendedBinlogSplit != null ? 1 : 0),
+                finishedUnackedSplits.size(),
+                uncompletedBinlogSplits.size(),
+                suspendedBinlogSplit != null ? suspendedBinlogSplit.splitId() : "none");
+
         logCurrentBinlogOffsets(unfinishedSplits, checkpointId);
 
         return unfinishedSplits;
@@ -231,6 +245,24 @@ public class MySqlSourceReader<T>
      *     should be true for reader which is during restoration from a checkpoint or savepoint.
      */
     private void addSplits(List<MySqlSplit> splits, boolean checkTableChangeForBinlogSplit) {
+        // Log checkpoint recovery information
+        if (checkTableChangeForBinlogSplit) {
+            LOG.info(
+                    "Source reader {} starting checkpoint recovery with {} splits",
+                    subtaskId,
+                    splits.size());
+            for (MySqlSplit split : splits) {
+                LOG.info(
+                        "Source reader {} restoring from checkpoint - split type: {}, splitId: {}, isSnapshotFinished: {}",
+                        subtaskId,
+                        split.isSnapshotSplit() ? "SNAPSHOT" : "BINLOG",
+                        split.splitId(),
+                        split.isSnapshotSplit()
+                                ? split.asSnapshotSplit().isSnapshotReadFinished()
+                                : "N/A");
+            }
+        }
+
         // restore for finishedUnackedSplits
         List<MySqlSplit> unfinishedSplits = new ArrayList<>();
         for (MySqlSplit split : splits) {
@@ -258,11 +290,25 @@ public class MySqlSourceReader<T>
                 }
             } else {
                 MySqlBinlogSplit binlogSplit = split.asBinlogSplit();
+
+                // Log binlog split recovery details
+                if (checkTableChangeForBinlogSplit) {
+                    LOG.info(
+                            "Source reader {} restoring binlog split from checkpoint - splitId: {}, startingOffset: {}, isSuspended: {}, isCompleted: {}, tables: {}",
+                            subtaskId,
+                            binlogSplit.splitId(),
+                            binlogSplit.getStartingOffset(),
+                            binlogSplit.isSuspended(),
+                            binlogSplit.isCompletedSplit(),
+                            binlogSplit.getTables());
+                }
+
                 // When restore from a checkpoint, the finished split infos may contain some splits
                 // for the deleted tables.
                 // We need to remove these splits for the deleted tables at the finished split
                 // infos.
                 if (checkTableChangeForBinlogSplit) {
+                    int originalFinishedSplits = binlogSplit.getFinishedSnapshotSplitInfos().size();
                     binlogSplit =
                             MySqlBinlogSplit.filterOutdatedSplitInfos(
                                     binlogSplit,
@@ -270,6 +316,16 @@ public class MySqlSourceReader<T>
                                             .getMySqlConnectorConfig()
                                             .getTableFilters()
                                             .dataCollectionFilter());
+                    int filteredFinishedSplits = binlogSplit.getFinishedSnapshotSplitInfos().size();
+
+                    if (originalFinishedSplits != filteredFinishedSplits) {
+                        LOG.info(
+                                "Source reader {} filtered outdated split infos during checkpoint recovery - original: {}, filtered: {}, removed: {}",
+                                subtaskId,
+                                originalFinishedSplits,
+                                filteredFinishedSplits,
+                                originalFinishedSplits - filteredFinishedSplits);
+                    }
                 }
 
                 // Try to discovery table schema once for newly added tables when source reader
@@ -282,8 +338,22 @@ public class MySqlSourceReader<T>
                 // the binlog split is suspended
                 if (binlogSplit.isSuspended()) {
                     suspendedBinlogSplit = binlogSplit;
+                    if (checkTableChangeForBinlogSplit) {
+                        LOG.info(
+                                "Source reader {} restored suspended binlog split during checkpoint recovery - splitId: {}, offset: {}",
+                                subtaskId,
+                                binlogSplit.splitId(),
+                                binlogSplit.getStartingOffset());
+                    }
                 } else if (!binlogSplit.isCompletedSplit()) {
                     uncompletedBinlogSplits.put(binlogSplit.splitId(), binlogSplit);
+                    if (checkTableChangeForBinlogSplit) {
+                        LOG.info(
+                                "Source reader {} restored uncompleted binlog split during checkpoint recovery - splitId: {}, offset: {}, requesting metadata",
+                                subtaskId,
+                                binlogSplit.splitId(),
+                                binlogSplit.getStartingOffset());
+                    }
                     requestBinlogSplitMetaIfNeeded(binlogSplit);
                 } else {
                     uncompletedBinlogSplits.remove(binlogSplit.splitId());
@@ -291,12 +361,56 @@ public class MySqlSourceReader<T>
                             discoverTableSchemasForBinlogSplit(
                                     binlogSplit, sourceConfig, checkNewlyAddedTableSchema);
                     unfinishedSplits.add(mySqlBinlogSplit);
+                    if (checkTableChangeForBinlogSplit) {
+                        LOG.info(
+                                "Source reader {} restored completed binlog split during checkpoint recovery - splitId: {}, offset: {}, tables: {}",
+                                subtaskId,
+                                binlogSplit.splitId(),
+                                binlogSplit.getStartingOffset(),
+                                mySqlBinlogSplit.getTables());
+                    }
                 }
                 LOG.info(
                         "Source reader {} received the binlog split : {}.", subtaskId, binlogSplit);
                 context.sendSourceEventToCoordinator(new BinlogSplitAssignedEvent());
             }
         }
+
+        // Log checkpoint recovery completion
+        if (checkTableChangeForBinlogSplit) {
+            LOG.info(
+                    "Source reader {} checkpoint recovery completed - unfinishedSplits: {}, finishedUnackedSplits: {}, suspendedBinlogSplit: {}",
+                    subtaskId,
+                    unfinishedSplits.size(),
+                    finishedUnackedSplits.size(),
+                    suspendedBinlogSplit != null ? suspendedBinlogSplit.splitId() : "none");
+
+            // Log details of what will be processed next
+            if (!unfinishedSplits.isEmpty()) {
+                LOG.info(
+                        "Source reader {} will process {} unfinished splits after recovery:",
+                        subtaskId,
+                        unfinishedSplits.size());
+                for (MySqlSplit split : unfinishedSplits) {
+                    if (split.isSnapshotSplit()) {
+                        LOG.info(
+                                "Source reader {} - unfinished snapshot split: {}, table: {}, finished: {}",
+                                subtaskId,
+                                split.splitId(),
+                                split.asSnapshotSplit().getTableId(),
+                                split.asSnapshotSplit().isSnapshotReadFinished());
+                    } else {
+                        LOG.info(
+                                "Source reader {} - unfinished binlog split: {}, offset: {}, tables: {}",
+                                subtaskId,
+                                split.splitId(),
+                                split.asBinlogSplit().getStartingOffset(),
+                                split.asBinlogSplit().getTables());
+                    }
+                }
+            }
+        }
+
         // notify split enumerator again about the finished unacked snapshot splits
         reportFinishedSnapshotSplitsIfNeed();
         // add all un-finished splits (including binlog split) to SourceReaderBase
