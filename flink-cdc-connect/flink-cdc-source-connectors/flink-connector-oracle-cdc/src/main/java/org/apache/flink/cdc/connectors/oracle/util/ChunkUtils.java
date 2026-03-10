@@ -19,6 +19,7 @@ package org.apache.flink.cdc.connectors.oracle.util;
 
 import org.apache.flink.cdc.connectors.oracle.source.utils.OracleTypeUtils;
 import org.apache.flink.table.api.ValidationException;
+import org.apache.flink.table.catalog.ObjectPath;
 import org.apache.flink.table.types.logical.RowType;
 
 import io.debezium.relational.Column;
@@ -29,6 +30,7 @@ import javax.annotation.Nullable;
 
 import java.sql.Types;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -46,16 +48,19 @@ public class ChunkUtils {
                         .getLogicalType();
     }
 
-    public static Column getChunkKeyColumn(Table table, @Nullable String chunkKeyColumn) {
+    public static Column getChunkKeyColumn(
+            Table table, @Nullable Map<ObjectPath, String> chunkKeyColumns) {
         List<Column> primaryKeys = table.primaryKeyColumns();
 
-        if (primaryKeys.isEmpty() && chunkKeyColumn == null) {
+        if (primaryKeys.isEmpty() && chunkKeyColumns == null) {
             throw new ValidationException(
                     "To use incremental snapshot, 'scan.incremental.snapshot.chunk.key-column' must be set when the table doesn't have primary keys.");
         }
 
         List<Column> searchColumns = table.columns();
-        if (chunkKeyColumn != null) {
+        if (chunkKeyColumns != null && !chunkKeyColumns.isEmpty()) {
+            // For now, just use the first entry in the map as a simple implementation
+            String chunkKeyColumn = chunkKeyColumns.values().iterator().next();
             Optional<Column> targetPkColumn =
                     searchColumns.stream()
                             .filter(col -> chunkKeyColumn.equals(col.name()))

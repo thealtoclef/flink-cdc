@@ -24,6 +24,7 @@ import org.apache.flink.cdc.connectors.base.source.EmbeddedFlinkDatabaseHistory;
 import org.apache.flink.cdc.connectors.base.source.meta.offset.Offset;
 import org.apache.flink.cdc.connectors.base.source.meta.split.SourceSplitBase;
 import org.apache.flink.cdc.connectors.base.source.reader.external.JdbcSourceFetchTaskContext;
+import org.apache.flink.cdc.connectors.base.source.utils.JdbcChunkUtils;
 import org.apache.flink.cdc.connectors.db2.source.config.Db2SourceConfig;
 import org.apache.flink.cdc.connectors.db2.source.dialect.Db2Dialect;
 import org.apache.flink.cdc.connectors.db2.source.handler.Db2SchemaChangeEventHandler;
@@ -197,7 +198,8 @@ public class Db2SourceFetchTaskContext extends JdbcSourceFetchTaskContext {
 
     @Override
     public RowType getSplitType(Table table) {
-        Column splitColumn = Db2Utils.getSplitColumn(table, sourceConfig.getChunkKeyColumn());
+        Column splitColumn =
+                JdbcChunkUtils.getSplitColumn(table, sourceConfig.getChunkKeyColumns());
         return Db2Utils.getSplitType(splitColumn);
     }
 

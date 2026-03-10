@@ -305,6 +305,20 @@ public class PostgresSourceBuilder<T> {
     }
 
     /**
+     * Table-specific filter conditions for snapshot phase. Format:
+     * 'schema.table1:condition1;schema.table2:condition2'.
+     *
+     * <p>Example: 'public.users:created_at &gt; ''2024-01-01'';public.orders:status = ''active'''
+     *
+     * @param snapshotFilter The filter string with table-specific conditions
+     * @return this builder
+     */
+    public PostgresSourceBuilder<T> snapshotFilter(String snapshotFilter) {
+        this.configFactory.snapshotFilter(snapshotFilter);
+        return this;
+    }
+
+    /**
      * Build the {@link PostgresIncrementalSource}.
      *
      * @return a PostgresParallelSource with the settings made for this builder.

@@ -102,7 +102,7 @@ public class Db2SourceConfigFactory extends JdbcSourceConfigFactory {
                 connectTimeout,
                 connectMaxRetries,
                 connectionPoolSize,
-                chunkKeyColumn,
+                chunkKeyColumns,
                 skipSnapshotBackfill,
                 assignUnboundedChunkFirst);
     }

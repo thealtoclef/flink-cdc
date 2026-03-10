@@ -27,6 +27,7 @@ import org.apache.flink.cdc.connectors.base.utils.ObjectUtils;
 import org.apache.flink.cdc.connectors.oracle.source.utils.OracleTypeUtils;
 import org.apache.flink.cdc.connectors.oracle.source.utils.OracleUtils;
 import org.apache.flink.cdc.connectors.oracle.util.ChunkUtils;
+import org.apache.flink.table.catalog.ObjectPath;
 import org.apache.flink.table.types.DataType;
 
 import io.debezium.jdbc.JdbcConnection;
@@ -38,6 +39,7 @@ import oracle.sql.ROWID;
 import javax.annotation.Nullable;
 
 import java.sql.SQLException;
+import java.util.Map;
 
 /**
  * The {@code ChunkSplitter} used to split Oracle table into a set of chunks for JDBC data source.
@@ -167,8 +169,9 @@ public class OracleChunkSplitter extends JdbcSourceChunkSplitter {
     }
 
     @Override
-    protected Column getSplitColumn(Table table, @Nullable String chunkKeyColumn) {
+    protected Column getSplitColumn(
+            Table table, @Nullable Map<ObjectPath, String> chunkKeyColumns) {
         // Use the ROWID column as the chunk key column by default for oracle cdc connector
-        return ChunkUtils.getChunkKeyColumn(table, chunkKeyColumn);
+        return ChunkUtils.getChunkKeyColumn(table, chunkKeyColumns);
     }
 }

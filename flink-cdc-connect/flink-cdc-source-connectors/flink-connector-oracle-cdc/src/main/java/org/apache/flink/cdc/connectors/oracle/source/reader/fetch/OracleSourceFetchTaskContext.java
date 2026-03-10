@@ -203,7 +203,7 @@ public class OracleSourceFetchTaskContext extends JdbcSourceFetchTaskContext {
     public RowType getSplitType(Table table) {
         OracleSourceConfig oracleSourceConfig = getSourceConfig();
         return ChunkUtils.getSplitType(
-                getChunkKeyColumn(table, oracleSourceConfig.getChunkKeyColumn()));
+                getChunkKeyColumn(table, oracleSourceConfig.getChunkKeyColumns()));
     }
 
     @Override
