@@ -291,18 +291,18 @@ public class PostgresQueryUtils {
             condition = sql.toString();
         }
 
-        // Prepend filter condition to the existing condition
+        String finalCondition = condition;
         if (filterCondition != null && !filterCondition.trim().isEmpty()) {
-            if (condition == null) {
-                condition = filterCondition;
+            if (finalCondition == null) {
+                finalCondition = filterCondition;
             } else {
-                condition = "(" + filterCondition + ") AND (" + condition + ")";
+                finalCondition = "(" + filterCondition + ") AND (" + finalCondition + ")";
             }
         }
 
         if (isScanningData) {
             return buildSelectWithRowLimits(
-                    tableId, limitSize, "*", Optional.ofNullable(condition), Optional.empty());
+                    tableId, limitSize, "*", Optional.ofNullable(finalCondition), Optional.empty());
         } else {
             final String orderBy =
                     pkRowType.getFieldNames().stream().collect(Collectors.joining(", "));
@@ -311,7 +311,7 @@ public class PostgresQueryUtils {
                     limitSize,
                     getPrimaryKeyColumnsProjection(pkRowType),
                     getMaxPrimaryKeyColumnsProjection(pkRowType),
-                    Optional.ofNullable(condition),
+                    Optional.ofNullable(finalCondition),
                     orderBy);
         }
     }

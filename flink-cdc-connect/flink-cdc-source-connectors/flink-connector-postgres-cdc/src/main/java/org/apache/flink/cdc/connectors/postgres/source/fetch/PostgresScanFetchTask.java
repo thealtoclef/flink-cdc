@@ -71,10 +71,10 @@ public class PostgresScanFetchTask extends AbstractScanFetchTask {
 
     private static final Logger LOG = LoggerFactory.getLogger(PostgresScanFetchTask.class);
 
-    /** Pattern to parse table-specific filters: schema.table:condition */
+    /** Pattern to parse table-specific filters: schema.table:condition. */
     private static final Pattern FILTER_PATTERN = Pattern.compile("([^:;]+)\\.([^:;]+):([^:;]+)");
 
-    /** Snapshot filter map per source configuration, uses ThreadLocal for isolation */
+    /** Snapshot filter map per source configuration, uses ThreadLocal for isolation. */
     private static final ThreadLocal<Map<String, String>> SNAPSHOT_FILTERS =
             ThreadLocal.withInitial(HashMap::new);
 

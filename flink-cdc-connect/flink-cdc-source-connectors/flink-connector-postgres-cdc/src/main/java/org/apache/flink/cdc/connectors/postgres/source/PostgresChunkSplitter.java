@@ -45,7 +45,7 @@ import java.util.regex.Pattern;
 @Internal
 public class PostgresChunkSplitter extends JdbcSourceChunkSplitter {
 
-    /** Pattern to parse table-specific filters: schema.table:condition */
+    /** Pattern to parse table-specific filters: schema.table:condition. */
     private static final Pattern FILTER_PATTERN = Pattern.compile("([^:;]+)\\.([^:;]+):([^:;]+)");
 
     /** Map of table-specific filter conditions. Key: schema.table, Value: filter condition */

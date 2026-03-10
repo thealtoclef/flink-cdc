@@ -74,6 +74,35 @@ CREATE TABLE shipments (
 SELECT * FROM shipments;
 ```
 
+### Snapshot Filter Example
+
+You can also apply a filter condition during the snapshot phase to limit the data read from the database:
+
+```sql
+-- register a PostgreSQL table with snapshot filter
+CREATE TABLE orders (
+  order_id INT,
+  user_id INT,
+  status STRING,
+  created_at TIMESTAMP
+) WITH (
+  'connector' = 'postgres-cdc',
+  'hostname' = 'localhost',
+  'port' = '5432',
+  'username' = 'postgres',
+  'password' = 'postgres',
+  'database-name' = 'postgres',
+  'schema-name' = 'public',
+  'table-name' = 'orders',
+  'scan.incremental.snapshot.enabled' = 'true',
+  -- only read orders created after 2024-01-01 during snapshot
+  'scan.incremental.snapshot.filter' = 'public.orders:created_at > ''2024-01-01'''
+);
+```
+
+The filter condition is appended as a WHERE clause during snapshot phase queries, allowing you to skip historical data that you don't need.
+
+
 ## Connector Options
 
 <div class="highlight">
@@ -367,6 +396,20 @@ The following options is available only when `scan.incremental.snapshot.enabled=
             By default, the chunk key is the first column of the primary key. A column that is not part of the primary key can be used as a chunk key, but this may lead to slower query performance.
           <br>
             <b>Warning:</b> Using a non-primary key column as a chunk key may lead to data inconsistencies. Please see <a href="#warning">Warning</a> for details.
+          </td>
+    </tr>
+    <tr>
+          <td>scan.incremental.snapshot.filter</td>
+          <td>optional</td>
+          <td style="word-wrap: break-word;">(none)</td>
+          <td>String</td>
+          <td>Table-specific filter conditions for snapshot phase. The filter is applied during snapshot phase to limit the data read from the database.
+            <br>
+            Format: <code>schema.table1:condition1;schema.table2:condition2</code>
+            <br>
+            Example: <code>public.users:created_at > '2024-01-01';public.orders:status = 'active'</code>
+            <br>
+            The filter condition will be appended as a WHERE clause during snapshot phase queries. This option is only effective when <code>scan.incremental.snapshot.enabled</code> is set to <code>true</code>.
           </td>
     </tr>
     <tr>
