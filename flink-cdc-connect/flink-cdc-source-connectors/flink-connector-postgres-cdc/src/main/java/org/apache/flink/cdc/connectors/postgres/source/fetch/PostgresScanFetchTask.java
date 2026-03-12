@@ -343,6 +343,18 @@ public class PostgresScanFetchTask extends AbstractScanFetchTask {
             // Get filter condition for the table
             String filterCondition = getFilterConditionForTable(snapshotSplit.getTableId());
 
+            // Log the filter condition at INFO level for debugging
+            if (filterCondition != null) {
+                LOG.info(
+                        "Applying snapshot filter for table '{}': condition='{}'",
+                        snapshotSplit.getTableId(),
+                        filterCondition);
+            } else {
+                LOG.info(
+                        "No snapshot filter configured for table '{}', using default query",
+                        snapshotSplit.getTableId());
+            }
+
             final String selectSql =
                     PostgresQueryUtils.buildSplitScanQuery(
                             snapshotSplit.getTableId(),
@@ -351,7 +363,9 @@ public class PostgresScanFetchTask extends AbstractScanFetchTask {
                             snapshotSplit.getSplitEnd() == null,
                             uuidFields,
                             filterCondition);
-            LOG.debug(
+
+            // Log the actual SQL query being executed at INFO level
+            LOG.info(
                     "For split '{}' of table {} using select statement: '{}'",
                     snapshotSplit.splitId(),
                     table.id(),

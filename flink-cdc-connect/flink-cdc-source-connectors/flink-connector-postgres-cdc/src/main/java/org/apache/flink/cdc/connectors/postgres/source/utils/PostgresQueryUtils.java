@@ -63,11 +63,16 @@ public class PostgresQueryUtils {
         String fromClause = "FROM " + quote(tableId);
         if (filterCondition != null && !filterCondition.trim().isEmpty()) {
             fromClause += " WHERE " + filterCondition;
+            LOG.info(
+                    "Applying filter condition for queryMinMax on table {}: {}",
+                    tableId,
+                    filterCondition);
         }
         final String minMaxQuery =
                 String.format(
                         "SELECT MIN(%s), MAX(%s) %s",
                         quoteForMinMax(column), quoteForMinMax(column), fromClause);
+        LOG.info("Executing queryMinMax on table {}: {}", tableId, minMaxQuery);
         return jdbc.queryAndMap(
                 minMaxQuery,
                 rs -> {
@@ -78,7 +83,13 @@ public class PostgresQueryUtils {
                                         "No result returned after running query [%s]",
                                         minMaxQuery));
                     }
-                    return rowToArray(rs, 2);
+                    Object[] result = rowToArray(rs, 2);
+                    LOG.info(
+                            "queryMinMax result for table {}: min={}, max={}",
+                            tableId,
+                            result[0],
+                            result[1]);
+                    return result;
                 });
     }
 
@@ -169,6 +180,10 @@ public class PostgresQueryUtils {
         String whereClause = String.format("%s >= %s", quotedColumn, castParam(splitColumn));
         if (filterCondition != null && !filterCondition.trim().isEmpty()) {
             whereClause = "(" + filterCondition + ") AND " + whereClause;
+            LOG.info(
+                    "Applying filter condition for queryNextChunkMax on table {}: {}",
+                    tableId,
+                    filterCondition);
         }
         String query =
                 String.format(
@@ -181,6 +196,11 @@ public class PostgresQueryUtils {
                         whereClause,
                         quotedColumn,
                         chunkSize);
+        LOG.info(
+                "Executing queryNextChunkMax on table {} with chunkSize {}: {}",
+                tableId,
+                chunkSize,
+                query);
         return jdbc.prepareQueryAndMap(
                 query,
                 ps -> ps.setObject(1, includedLowerBound),
@@ -191,7 +211,13 @@ public class PostgresQueryUtils {
                                 String.format(
                                         "No result returned after running query [%s]", query));
                     }
-                    return rs.getObject(1);
+                    Object result = rs.getObject(1);
+                    LOG.info(
+                            "queryNextChunkMax result for table {} with lowerBound {}: {}",
+                            tableId,
+                            includedLowerBound,
+                            result);
+                    return result;
                 });
     }
 

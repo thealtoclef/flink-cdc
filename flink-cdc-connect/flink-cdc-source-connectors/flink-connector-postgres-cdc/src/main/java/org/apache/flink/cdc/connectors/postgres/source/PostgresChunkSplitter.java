@@ -30,6 +30,8 @@ import org.apache.flink.table.types.DataType;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Column;
 import io.debezium.relational.TableId;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 
@@ -44,6 +46,8 @@ import java.util.regex.Pattern;
  */
 @Internal
 public class PostgresChunkSplitter extends JdbcSourceChunkSplitter {
+
+    private static final Logger LOG = LoggerFactory.getLogger(PostgresChunkSplitter.class);
 
     /** Pattern to parse table-specific filters: schema.table:condition. */
     private static final Pattern FILTER_PATTERN = Pattern.compile("([^:;]+)\\.([^:;]+):([^:;]+)");
@@ -68,6 +72,7 @@ public class PostgresChunkSplitter extends JdbcSourceChunkSplitter {
         if (sourceConfig instanceof PostgresSourceConfig) {
             PostgresSourceConfig postgresConfig = (PostgresSourceConfig) sourceConfig;
             String snapshotFilter = postgresConfig.getSnapshotFilter();
+            LOG.info("Parsing snapshot filter configuration: '{}'", snapshotFilter);
             if (snapshotFilter != null && !snapshotFilter.trim().isEmpty()) {
                 String[] tableFilters = snapshotFilter.split(";");
                 for (String tableFilter : tableFilters) {
@@ -76,11 +81,16 @@ public class PostgresChunkSplitter extends JdbcSourceChunkSplitter {
                         String schema = matcher.group(1).trim();
                         String table = matcher.group(2).trim();
                         String condition = matcher.group(3).trim();
-                        filterMap.put(schema + "." + table, condition);
+                        String key = schema + "." + table;
+                        filterMap.put(key, condition);
+                        LOG.info("Added filter for table '{}': '{}'", key, condition);
+                    } else {
+                        LOG.warn("Failed to parse filter condition: '{}'", tableFilter);
                     }
                 }
             }
         }
+        LOG.info("Total snapshot filters loaded: {}", filterMap.size());
         return filterMap;
     }
 
@@ -93,7 +103,13 @@ public class PostgresChunkSplitter extends JdbcSourceChunkSplitter {
     @Nullable
     private String getFilterForTable(TableId tableId) {
         String key = tableId.schema() + "." + tableId.table();
-        return snapshotFilters.get(key);
+        String filter = snapshotFilters.get(key);
+        if (filter != null) {
+            LOG.info("Found snapshot filter for table {}: '{}'", key, filter);
+        } else {
+            LOG.debug("No snapshot filter found for table {}", key);
+        }
+        return filter;
     }
 
     @Override
@@ -105,6 +121,7 @@ public class PostgresChunkSplitter extends JdbcSourceChunkSplitter {
             Object includedLowerBound)
             throws SQLException {
         String filterCondition = getFilterForTable(tableId);
+        LOG.info("queryNextChunkMax for table {}, filterCondition: {}", tableId, filterCondition);
         return PostgresQueryUtils.queryNextChunkMax(
                 jdbc, tableId, splitColumn, chunkSize, includedLowerBound, filterCondition);
     }
@@ -114,6 +131,7 @@ public class PostgresChunkSplitter extends JdbcSourceChunkSplitter {
     public Object[] queryMinMax(JdbcConnection jdbc, TableId tableId, Column splitColumn)
             throws SQLException {
         String filterCondition = getFilterForTable(tableId);
+        LOG.info("queryMinMax for table {}, filterCondition: {}", tableId, filterCondition);
         return PostgresQueryUtils.queryMinMax(jdbc, tableId, splitColumn, filterCondition);
     }
 
